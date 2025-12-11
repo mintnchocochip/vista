@@ -1,7 +1,7 @@
 // src/shared/components/Card.jsx - VIT Theme
 import React from 'react';
 
-const Card = ({ children, className = '', padding = 'md' }) => {
+const Card = ({ children, className = '', padding = 'md', onClick, ...rest }) => {
   const paddings = {
     none: '',
     sm: 'p-3',
@@ -10,7 +10,11 @@ const Card = ({ children, className = '', padding = 'md' }) => {
   };
   
   return (
-    <div className={`bg-white rounded-xl shadow-sm border border-gray-200 ${paddings[padding]} ${className}`}>
+    <div 
+      className={`bg-white rounded-xl shadow-sm border border-gray-200 ${paddings[padding]} ${className}`}
+      onClick={onClick}
+      {...rest}
+    >
       {children}
     </div>
   );

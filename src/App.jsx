@@ -3,6 +3,12 @@ import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './shared/hooks/useAuth';
 import FacultyDashboard from './features/faculty/pages/FacultyDashboard';
+import StudentManagement from './features/admin/pages/StudentManagement';
+import FacultyManagement from './features/admin/pages/FacultyManagement';
+import ProjectManagement from './features/admin/pages/ProjectManagement';
+import AdminReports from './features/admin/pages/AdminReports';
+import AdminSettings from './features/admin/pages/AdminSettings';
+import RequestManagement from './features/admin/pages/RequestManagement';
 import Login from './features/auth/pages/Login';
 import InstructionsPage from './features/auth/pages/InstructionsPage';
 
@@ -44,7 +50,65 @@ function AppRoutes() {
         } 
       />
       
-      {/* TODO: Add admin routes */}
+      {/* Admin Routes */}
+      <Route 
+        path="/admin" 
+        element={<Navigate to="/admin/students" replace />}
+      />
+      
+      <Route 
+        path="/admin/students" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+            <StudentManagement />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/faculty" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+            <FacultyManagement />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/projects" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+            <ProjectManagement />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/reports" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+            <AdminReports />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/requests" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+            <RequestManagement />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/settings" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+            <AdminSettings />
+          </ProtectedRoute>
+        } 
+      />
       
       <Route path="*" element={<Navigate to="/" />} />
     </Routes>

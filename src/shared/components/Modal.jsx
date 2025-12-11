@@ -50,7 +50,7 @@ const Modal = ({ isOpen, onClose, title, children, size = 'lg' }) => {
             </button>
           </div>
           
-          <div className="bg-white">
+          <div className="bg-white p-6">
             {children}
           </div>
         </div>
