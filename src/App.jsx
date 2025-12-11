@@ -9,6 +9,7 @@ import ProjectManagement from './features/admin/pages/ProjectManagement';
 import AdminReports from './features/admin/pages/AdminReports';
 import AdminSettings from './features/admin/pages/AdminSettings';
 import RequestManagement from './features/admin/pages/RequestManagement';
+import AdminBroadcasts from './features/admin/pages/AdminBroadcasts';
 import Login from './features/auth/pages/Login';
 import InstructionsPage from './features/auth/pages/InstructionsPage';
 
@@ -106,6 +107,15 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
             <AdminSettings />
+          </ProtectedRoute>
+        } 
+      />
+      
+      <Route 
+        path="/admin/broadcasts" 
+        element={
+          <ProtectedRoute allowedRoles={['admin', 'coordinator']}>
+            <AdminBroadcasts />
           </ProtectedRoute>
         } 
       />

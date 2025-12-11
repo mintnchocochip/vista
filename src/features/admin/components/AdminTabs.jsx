@@ -7,7 +7,8 @@ import {
   DocumentTextIcon,
   ChartBarIcon,
   Cog6ToothIcon,
-  ClipboardDocumentListIcon
+  ClipboardDocumentListIcon,
+  MegaphoneIcon
 } from '@heroicons/react/24/outline';
 
 const AdminTabs = () => {
@@ -51,6 +52,13 @@ const AdminTabs = () => {
       description: 'Handle requests'
     },
     { 
+      id: 'broadcasts', 
+      label: 'Broadcasts', 
+      path: '/admin/broadcasts',
+      icon: MegaphoneIcon,
+      description: 'Send announcements'
+    },
+    { 
       id: 'settings', 
       label: 'Settings', 
       path: '/admin/settings',
@@ -64,7 +72,7 @@ const AdminTabs = () => {
   return (
     <div className="bg-white border-b border-gray-200 shadow-sm">
       <div className="max-w-7xl mx-auto px-4">
-        <div className="flex items-center gap-2 overflow-x-auto py-3">
+        <div className="flex items-center gap-2 py-3 flex-wrap">
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = isActive(tab.path);
@@ -74,7 +82,7 @@ const AdminTabs = () => {
                 key={tab.id}
                 onClick={() => navigate(tab.path)}
                 className={`
-                  flex items-center gap-2 px-5 py-3 rounded-lg font-medium text-base
+                  flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
                   transition-all duration-200 whitespace-nowrap
                   ${active 
                     ? 'bg-blue-600 text-white shadow-md' 
