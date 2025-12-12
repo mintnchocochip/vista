@@ -179,7 +179,7 @@ const FacultyManagement = () => {
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Faculty Management</h1>
             <p className="text-sm text-gray-600 mt-1">
-              Manage faculty members, assignments, and workload
+              
             </p>
           </div>
           <Button onClick={openAddModal}>

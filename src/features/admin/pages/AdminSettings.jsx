@@ -6,6 +6,8 @@ import AcademicDataSettings from '../components/settings/AcademicDataSettings';
 import ProgramSettings from '../components/settings/ProgramSettings';
 import TeamSettings from '../components/settings/TeamSettings';
 import RubricSettings from '../components/settings/RubricSettings';
+import RoleManagement from '../components/RoleManagement';
+import { INITIAL_FACULTY } from '../components/faculty-management/facultyData';
 import {
   initialSchools,
   initialPrograms,
@@ -20,7 +22,8 @@ import {
   CalendarDaysIcon,
   ClipboardDocumentListIcon,
   UserGroupIcon,
-  DocumentTextIcon
+  DocumentTextIcon,
+  KeyIcon
 } from '@heroicons/react/24/outline';
 
 const AdminSettings = () => {
@@ -62,6 +65,12 @@ const AdminSettings = () => {
       label: 'Team Settings', 
       icon: UserGroupIcon,
       description: 'Configure team sizes'
+    },
+    { 
+      id: 'roles', 
+      label: 'Roles / AD', 
+      icon: KeyIcon,
+      description: 'Assign coordinators by context'
     },
     { 
       id: 'rubrics', 
@@ -200,6 +209,16 @@ const AdminSettings = () => {
             <RubricSettings
               rubrics={rubrics}
               onUpdate={handleUpdateRubrics}
+            />
+          )}
+
+          {activeTab === 'roles' && (
+            <RoleManagement
+              schools={schools}
+              programsBySchool={programs}
+              years={years}
+              semesters={semesters}
+              facultyData={INITIAL_FACULTY}
             />
           )}
         </div>

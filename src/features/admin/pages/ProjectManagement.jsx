@@ -14,9 +14,6 @@ const ProjectManagement = () => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Project Management</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Oversee student projects, timelines, and deliverables
-          </p>
         </div>
 
         <Card className="text-center py-12">
