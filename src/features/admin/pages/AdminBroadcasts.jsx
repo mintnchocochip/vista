@@ -215,6 +215,8 @@ const AdminBroadcasts = () => {
     <div className="min-h-screen bg-gray-50">
       <Navbar />
       
+        {/* Admin Tabs */}
+        <AdminTabs />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-6">
@@ -232,8 +234,6 @@ const AdminBroadcasts = () => {
           <p className="text-sm text-blue-600 mt-2">{activeAudienceDescription}</p>
         </div>
 
-        {/* Admin Tabs */}
-        <AdminTabs />
 
         {/* Broadcast Form */}
         <BroadcastForm

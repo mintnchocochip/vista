@@ -14,14 +14,62 @@ import {
   initialTeamSettings,
   initialRubrics
 } from '../components/settings/settingsData';
+import { 
+  BuildingOffice2Icon,
+  AcademicCapIcon,
+  CalendarDaysIcon,
+  ClipboardDocumentListIcon,
+  UserGroupIcon,
+  DocumentTextIcon
+} from '@heroicons/react/24/outline';
 
 const AdminSettings = () => {
+  const [activeTab, setActiveTab] = useState('schools');
   const [schools, setSchools] = useState(initialSchools);
   const [programs, setPrograms] = useState(initialPrograms);
   const [years, setYears] = useState(initialYears);
   const [semesters, setSemesters] = useState(initialSemesters);
   const [teamSettings, setTeamSettings] = useState(initialTeamSettings);
   const [rubrics, setRubrics] = useState(initialRubrics);
+
+  const settingsTabs = [
+    { 
+      id: 'schools', 
+      label: 'Schools', 
+      icon: BuildingOffice2Icon,
+      description: 'Manage schools'
+    },
+    { 
+      id: 'programs', 
+      label: 'Programs', 
+      icon: AcademicCapIcon,
+      description: 'Manage programs'
+    },
+    { 
+      id: 'years', 
+      label: 'Academic Years', 
+      icon: CalendarDaysIcon,
+      description: 'Manage years'
+    },
+    { 
+      id: 'semesters', 
+      label: 'Semesters', 
+      icon: ClipboardDocumentListIcon,
+      description: 'Manage semesters'
+    },
+    { 
+      id: 'teams', 
+      label: 'Team Settings', 
+      icon: UserGroupIcon,
+      description: 'Configure team sizes'
+    },
+    { 
+      id: 'rubrics', 
+      label: 'Rubrics', 
+      icon: DocumentTextIcon,
+      description: 'Manage rubric templates'
+    }
+  ];
 
   const handleUpdateSchools = (updated) => {
     setSchools(updated);
@@ -72,53 +120,88 @@ const AdminSettings = () => {
           </p>
         </div>
 
-        <div className="space-y-8">
-          {/* Schools */}
-          <AcademicDataSettings
-            data={schools}
-            onUpdate={handleUpdateSchools}
-            title="School"
-            type="school"
-          />
+        {/* Settings Tabs */}
+        <div className="mb-6 bg-white rounded-lg shadow-sm p-2">
+          <div className="flex gap-2">
+            {settingsTabs.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeTab === tab.id;
+              
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`
+                    flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all
+                    ${isActive 
+                      ? 'bg-blue-600 text-white shadow-md' 
+                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                    }
+                  `}
+                  title={tab.description}
+                >
+                  <Icon className="h-5 w-5" />
+                  <span>{tab.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
-          {/* Programs */}
-          <ProgramSettings
-            schools={schools}
-            programs={programs}
-            onUpdate={handleUpdatePrograms}
-          />
+        {/* Settings Content */}
+        <div>
+          {activeTab === 'schools' && (
+            <AcademicDataSettings
+              data={schools}
+              onUpdate={handleUpdateSchools}
+              title="School"
+              type="school"
+            />
+          )}
 
-          {/* Academic Years */}
-          <AcademicDataSettings
-            data={years}
-            onUpdate={handleUpdateYears}
-            title="Academic Year"
-            type="year"
-          />
+          {activeTab === 'programs' && (
+            <ProgramSettings
+              schools={schools}
+              programs={programs}
+              onUpdate={handleUpdatePrograms}
+            />
+          )}
 
-          {/* Semesters */}
-          <AcademicDataSettings
-            data={semesters}
-            onUpdate={handleUpdateSemesters}
-            title="Semester"
-            type="semester"
-          />
+          {activeTab === 'years' && (
+            <AcademicDataSettings
+              data={years}
+              onUpdate={handleUpdateYears}
+              title="Academic Year"
+              type="year"
+            />
+          )}
 
-          {/* Team Settings */}
-          <TeamSettings
-            schools={schools}
-            programs={programs}
-            years={years}
-            semesters={semesters}
-            initialSettings={teamSettings}
-            onUpdate={handleUpdateTeamSettings}
-          />
+          {activeTab === 'semesters' && (
+            <AcademicDataSettings
+              data={semesters}
+              onUpdate={handleUpdateSemesters}
+              title="Semester"
+              type="semester"
+            />
+          )}
 
-          {/* Rubrics */}
-          <RubricSettings
-            rubrics={rubrics}
-            onUpdate={handleUpdateRubrics}
-          />
+          {activeTab === 'teams' && (
+            <TeamSettings
+              schools={schools}
+              programs={programs}
+              years={years}
+              semesters={semesters}
+              initialSettings={teamSettings}
+              onUpdate={handleUpdateTeamSettings}
+            />
+          )}
+
+          {activeTab === 'rubrics' && (
+            <RubricSettings
+              rubrics={rubrics}
+              onUpdate={handleUpdateRubrics}
+            />
+          )}
         </div>
       </div>
     </div>
