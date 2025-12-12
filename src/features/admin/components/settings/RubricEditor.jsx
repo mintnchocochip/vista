@@ -153,9 +153,6 @@ const RubricEditor = ({ rubric, onSave, onCancel }) => {
                 <h4 className="text-lg font-semibold text-gray-900">
                   Rubric Components
                 </h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  Add evaluation criteria with mark levels and descriptions
-                </p>
               </div>
               <Button
                 type="button"

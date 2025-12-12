@@ -132,9 +132,6 @@ const MarkLevelEditor = ({ component, onSave, onCancel }) => {
                 <h4 className="text-lg font-semibold text-gray-900">
                   Mark Levels & Descriptions
                 </h4>
-                <p className="text-sm text-gray-600 mt-1">
-                  Define what each mark value represents (e.g., "10m: 20+ citations from peer-reviewed journals")
-                </p>
               </div>
               <Button
                 type="button"

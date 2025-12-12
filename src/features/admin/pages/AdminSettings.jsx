@@ -7,6 +7,7 @@ import ProgramSettings from '../components/settings/ProgramSettings';
 import TeamSettings from '../components/settings/TeamSettings';
 import RubricSettings from '../components/settings/RubricSettings';
 import RoleManagement from '../components/RoleManagement';
+import SchedulerManagement from '../components/SchedulerManagement';
 import { INITIAL_FACULTY } from '../components/faculty-management/facultyData';
 import {
   initialSchools,
@@ -16,14 +17,16 @@ import {
   initialTeamSettings,
   initialRubrics
 } from '../components/settings/settingsData';
-import { 
+
+import {
   BuildingOffice2Icon,
   AcademicCapIcon,
   CalendarDaysIcon,
   ClipboardDocumentListIcon,
   UserGroupIcon,
-  DocumentTextIcon,
-  KeyIcon
+  KeyIcon,
+  ClockIcon,
+  DocumentTextIcon
 } from '@heroicons/react/24/outline';
 
 const AdminSettings = () => {
@@ -34,6 +37,30 @@ const AdminSettings = () => {
   const [semesters, setSemesters] = useState(initialSemesters);
   const [teamSettings, setTeamSettings] = useState(initialTeamSettings);
   const [rubrics, setRubrics] = useState(initialRubrics);
+
+  // Role assignments for Project Coordinators (used by Roles + Scheduler tabs)
+  const [coordinatorAssignments, setCoordinatorAssignments] = useState([
+    {
+      schoolId: 1,
+      programId: 1,
+      yearId: 2024,
+      semesterId: 1,
+      coordinators: ['F001', 'F002'],
+      mainCoordinator: 'F001'
+    }
+  ]);
+
+  // Feature schedules applied to Project Coordinators per academic context
+  const [schedules, setSchedules] = useState([
+    {
+      schoolId: 1,
+      programId: 1,
+      yearId: 2024,
+      semesterId: 1,
+      featureId: 'faculty-addition',
+      activeUntil: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+    }
+  ]);
 
   const settingsTabs = [
     { 
@@ -71,6 +98,12 @@ const AdminSettings = () => {
       label: 'Roles / AD', 
       icon: KeyIcon,
       description: 'Assign coordinators by context'
+    },
+    { 
+      id: 'scheduler', 
+      label: 'Scheduler', 
+      icon: ClockIcon,
+      description: 'Set feature deadlines for coordinators'
     },
     { 
       id: 'rubrics', 
@@ -124,9 +157,6 @@ const AdminSettings = () => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">System Settings</h1>
-          <p className="text-sm text-gray-600 mt-1">
-            Configure academic data, team settings, and evaluation rubrics
-          </p>
         </div>
 
         {/* Settings Tabs */}
@@ -219,6 +249,21 @@ const AdminSettings = () => {
               years={years}
               semesters={semesters}
               facultyData={INITIAL_FACULTY}
+              coordinatorAssignments={coordinatorAssignments}
+              setCoordinatorAssignments={setCoordinatorAssignments}
+            />
+          )}
+
+          {activeTab === 'scheduler' && (
+            <SchedulerManagement
+              schools={schools}
+              programsBySchool={programs}
+              years={years}
+              semesters={semesters}
+              facultyData={INITIAL_FACULTY}
+              coordinatorAssignments={coordinatorAssignments}
+              schedules={schedules}
+              setSchedules={setSchedules}
             />
           )}
         </div>

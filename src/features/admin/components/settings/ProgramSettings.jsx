@@ -110,9 +110,6 @@ const ProgramSettings = ({ schools, programs, onUpdate }) => {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-semibold text-gray-900">Programs</h3>
-              <p className="text-sm text-gray-600 mt-1">
-                Manage academic programs under each school
-              </p>
             </div>
             <Button
               variant="primary"

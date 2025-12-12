@@ -17,7 +17,9 @@ const RoleManagement = ({
   programsBySchool,
   years,
   semesters,
-  facultyData
+  facultyData,
+  coordinatorAssignments: coordinatorAssignmentsProp,
+  setCoordinatorAssignments: setCoordinatorAssignmentsProp
 }) => {
   const { showToast } = useToast();
   
@@ -28,17 +30,19 @@ const RoleManagement = ({
   const [selectedSemester, setSelectedSemester] = useState('');
   
   // Role assignments (stored globally in real app)
-  const [coordinatorAssignments, setCoordinatorAssignments] = useState([
-    // Example data
-    { 
-      schoolId: 1, 
-      programId: 1, 
-      yearId: 1, 
-      semesterId: 1, 
+  const [localCoordinatorAssignments, setLocalCoordinatorAssignments] = useState([
+    {
+      schoolId: 1,
+      programId: 1,
+      yearId: 2024,
+      semesterId: 1,
       coordinators: ['F001', 'F002'],
       mainCoordinator: 'F001'
     }
   ]);
+
+  const coordinatorAssignments = coordinatorAssignmentsProp ?? localCoordinatorAssignments;
+  const setCoordinatorAssignments = setCoordinatorAssignmentsProp ?? setLocalCoordinatorAssignments;
 
   // Search and selection
   const [searchTerm, setSearchTerm] = useState('');
@@ -256,14 +260,9 @@ const RoleManagement = ({
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-3 bg-purple-100 rounded-lg">
-          <UserGroupIcon className="h-8 w-8 text-purple-600" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Role Management</h2>
-          <p className="text-sm text-gray-600">Assign Project Coordinators for each academic context</p>
-        </div>
+      <div>
+        <h2 className="text-2xl font-bold text-gray-900">Role Management</h2>
+        <p className="text-sm text-gray-600">Assign Project Coordinators for each academic context</p>
       </div>
 
       {/* Academic Context Selection */}

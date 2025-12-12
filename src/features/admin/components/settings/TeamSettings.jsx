@@ -4,7 +4,7 @@ import Card from '../../../../shared/components/Card';
 import Button from '../../../../shared/components/Button';
 import Select from '../../../../shared/components/Select';
 import SliderInput from '../../../../shared/components/SliderInput';
-import { UserGroupIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import { useToast } from '../../../../shared/hooks/useToast';
 
 const TeamSettings = ({ schools, programs, years, semesters, initialSettings, onUpdate }) => {
@@ -105,13 +105,9 @@ const TeamSettings = ({ schools, programs, years, semesters, initialSettings, on
   return (
     <Card>
       <div className="p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <UserGroupIcon className="h-6 w-6 text-blue-600" />
+        <div className="mb-6">
           <div className="flex-1">
             <h3 className="text-lg font-semibold text-gray-900">Team Size Configuration</h3>
-            <p className="text-sm text-gray-600 mt-1">
-              Set the allowed team size for student projects by school, program, year, and semester
-            </p>
           </div>
         </div>
 
