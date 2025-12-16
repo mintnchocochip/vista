@@ -1,28 +1,98 @@
+import mongoose from "mongoose";
 import { FacultyService } from "../services/facultyService.js";
 import { PanelService } from "../services/panelService.js";
 import { StudentService } from "../services/studentService.js";
 import { ProjectService } from "../services/projectService.js";
 import { MarkingSchemaService } from "../services/markingSchemaService.js";
+import Faculty from "../models/facultySchema.js";
+import Student from "../models/studentSchema.js";
+import Project from "../models/projectSchema.js";
+import Panel from "../models/panelSchema.js";
+import MarkingSchema from "../models/markingSchema.js";
 import ComponentLibrary from "../models/componentLibrarySchema.js";
+import DepartmentConfig from "../models/departmentConfigSchema.js";
+import Request from "../models/requestSchema.js";
+import BroadcastMessage from "../models/broadcastMessageSchema.js";
 import { logger } from "../utils/logger.js";
 
-// Faculty Management
+/**
+ * Helper: Get coordinator context filter
+ */
+function getCoordinatorContext(req) {
+  return {
+    academicYear: req.coordinator.academicYear,
+    school: req.coordinator.school,
+    department: req.coordinator.department,
+  };
+}
+
+/**
+ * Helper: Verify context ownership
+ */
+function verifyContext(item, coordinator) {
+  return (
+    item.academicYear === coordinator.academicYear &&
+    item.school === coordinator.school &&
+    item.department === coordinator.department
+  );
+}
+
+// ==================== Profile & Permissions ====================
+
+export async function getProfile(req, res) {
+  try {
+    const coordinator = await ProjectCoordinator.findById(req.coordinator._id)
+      .populate("faculty", "name emailId employeeId")
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: coordinator,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function getPermissions(req, res) {
+  try {
+    res.status(200).json({
+      success: true,
+      data: {
+        permissions: req.coordinator.permissions,
+        isPrimary: req.coordinator.isPrimary,
+        canEdit: req.coordinator.isPrimary, // Only primary can edit
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// ==================== Faculty Management ====================
+
 export async function createFaculty(req, res) {
   try {
-    const { academicYear, school, department } = req.body;
+    const context = getCoordinatorContext(req);
 
-    if (
-      req.coordinator.academicYear !== academicYear ||
-      req.coordinator.school !== school ||
-      req.coordinator.department !== department
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "You can only create faculty for your assigned context.",
-      });
-    }
+    // Ensure faculty is created in coordinator's context
+    req.body.academicYear = context.academicYear;
+    req.body.school = context.school;
+    req.body.department = context.department;
 
     const faculty = await FacultyService.createFaculty(req.body, req.user._id);
+
+    logger.info("faculty_created_by_coordinator", {
+      facultyId: faculty._id,
+      createdBy: req.user._id,
+      coordinatorId: req.coordinator._id,
+    });
 
     res.status(201).json({
       success: true,
@@ -39,17 +109,18 @@ export async function createFaculty(req, res) {
 
 export async function getFacultyList(req, res) {
   try {
-    const filters = {
-      ...req.query,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-    };
+    const context = getCoordinatorContext(req);
+    const filters = { ...req.query, ...context };
 
-    const faculties = await FacultyService.getFacultyList(filters);
+    const faculties = await Faculty.find(filters)
+      .select("-password")
+      .sort({ name: 1 })
+      .lean();
 
     res.status(200).json({
       success: true,
       data: faculties,
+      count: faculties.length,
     });
   } catch (error) {
     res.status(500).json({
@@ -59,18 +130,134 @@ export async function getFacultyList(req, res) {
   }
 }
 
-// Student Management
+export async function updateFaculty(req, res) {
+  try {
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can edit faculty.",
+      });
+    }
+
+    const { employeeId } = req.params;
+    const faculty = await Faculty.findOne({ employeeId });
+
+    if (!faculty) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty not found.",
+      });
+    }
+
+    // Verify context
+    if (!verifyContext(faculty, req.coordinator)) {
+      return res.status(403).json({
+        success: false,
+        message: "Faculty not in your department.",
+      });
+    }
+
+    Object.assign(faculty, req.body);
+    await faculty.save();
+
+    logger.info("faculty_updated_by_coordinator", {
+      facultyId: faculty._id,
+      updatedBy: req.user._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Faculty updated successfully.",
+      data: faculty,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function deleteFaculty(req, res) {
+  try {
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can delete faculty.",
+      });
+    }
+
+    const { employeeId } = req.params;
+    const faculty = await Faculty.findOne({ employeeId });
+
+    if (!faculty) {
+      return res.status(404).json({
+        success: false,
+        message: "Faculty not found.",
+      });
+    }
+
+    // Verify context
+    if (!verifyContext(faculty, req.coordinator)) {
+      return res.status(403).json({
+        success: false,
+        message: "Faculty not in your department.",
+      });
+    }
+
+    // Check if faculty is guide for any active projects
+    const projectCount = await Project.countDocuments({
+      guideFaculty: faculty._id,
+      status: "active",
+    });
+
+    if (projectCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete faculty. They are guide for ${projectCount} active projects.`,
+      });
+    }
+
+    await Faculty.findByIdAndDelete(faculty._id);
+
+    logger.info("faculty_deleted_by_coordinator", {
+      facultyId: faculty._id,
+      deletedBy: req.user._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Faculty deleted successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// ==================== Student Management ====================
+
 export async function uploadStudents(req, res) {
   try {
     const { students } = req.body;
+    const context = getCoordinatorContext(req);
 
     const results = await StudentService.uploadStudents(
       students,
-      req.coordinator.academicYear,
-      req.coordinator.school,
-      req.coordinator.department,
+      context.academicYear,
+      context.school,
+      context.department,
       req.user._id,
     );
+
+    logger.info("students_uploaded_by_coordinator", {
+      created: results.created,
+      updated: results.updated,
+      errors: results.errors,
+      coordinatorId: req.coordinator._id,
+    });
 
     res.status(200).json({
       success: true,
@@ -87,14 +274,10 @@ export async function uploadStudents(req, res) {
 
 export async function getStudentList(req, res) {
   try {
-    const filters = {
-      academicYear: req.coordinator.academicYear,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-      ...req.query,
-    };
+    const context = getCoordinatorContext(req);
+    const filters = { ...req.query, ...context };
 
-    const students = await StudentService.getStudentList(filters);
+    const students = await StudentService.getFilteredStudents(filters);
 
     res.status(200).json({
       success: true,
@@ -109,19 +292,26 @@ export async function getStudentList(req, res) {
   }
 }
 
-// Panel Management
-export async function createPanel(req, res) {
+export async function updateStudent(req, res) {
   try {
-    req.body.academicYear = req.coordinator.academicYear;
-    req.body.school = req.coordinator.school;
-    req.body.department = req.coordinator.department;
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can edit students.",
+      });
+    }
 
-    const panel = await PanelService.createPanel(req.body, req.user._id);
+    const { regNo } = req.params;
+    const student = await StudentService.updateStudent(
+      regNo,
+      req.body,
+      req.user._id,
+    );
 
-    res.status(201).json({
+    res.status(200).json({
       success: true,
-      message: "Panel created successfully.",
-      data: panel,
+      message: "Student updated successfully.",
+      data: student,
     });
   } catch (error) {
     res.status(400).json({
@@ -131,20 +321,43 @@ export async function createPanel(req, res) {
   }
 }
 
-export async function getPanelList(req, res) {
+export async function deleteStudent(req, res) {
   try {
-    const filters = {
-      academicYear: req.coordinator.academicYear,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-      ...req.query,
-    };
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can delete students.",
+      });
+    }
 
-    const panels = await PanelService.getPanelList(filters);
+    const { regNo } = req.params;
+    await StudentService.deleteStudent(regNo, req.user._id);
 
     res.status(200).json({
       success: true,
-      data: panels,
+      message: "Student deleted successfully.",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// ==================== Project Management ====================
+
+export async function getProjectList(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+    const filters = { ...req.query, ...context };
+
+    const projects = await ProjectService.getProjectList(filters);
+
+    res.status(200).json({
+      success: true,
+      data: projects,
+      count: projects.length,
     });
   } catch (error) {
     res.status(500).json({
@@ -154,21 +367,56 @@ export async function getPanelList(req, res) {
   }
 }
 
-export async function updatePanelMembers(req, res) {
+export async function createProject(req, res) {
   try {
-    const { id } = req.params;
-    const { memberEmployeeIds } = req.body;
+    const context = getCoordinatorContext(req);
 
-    const panel = await PanelService.updatePanelMembers(
-      id,
-      memberEmployeeIds,
-      req.user._id,
-    );
+    // Apply context
+    req.body.academicYear = context.academicYear;
+    req.body.school = context.school;
+    req.body.department = context.department;
 
-    res.status(200).json({
+    // Validate guide faculty exists and belongs to same dept
+    const guide = await Faculty.findOne({
+      employeeId: req.body.guideFacultyEmpId,
+    });
+
+    if (!guide) {
+      return res.status(404).json({
+        success: false,
+        message: "Guide faculty not found.",
+      });
+    }
+
+    if (!verifyContext(guide, req.coordinator)) {
+      return res.status(400).json({
+        success: false,
+        message: "Guide faculty must be from the same department.",
+      });
+    }
+
+    // Validate specialization match
+    if (guide.specialization !== req.body.specialization) {
+      return res.status(400).json({
+        success: false,
+        message: `Specialization mismatch. Guide specializes in ${guide.specialization}, but project requires ${req.body.specialization}.`,
+      });
+    }
+
+    const project = await ProjectService.createProject(req.body, req.user._id);
+
+    logger.info("project_created_by_coordinator", {
+      projectId: project._id,
+      coordinatorId: req.coordinator._id,
+    });
+
+    res.status(201).json({
       success: true,
-      message: "Panel members updated successfully.",
-      data: panel,
+      message: "Project created successfully.",
+      data: {
+        projectId: project._id,
+        name: project.name,
+      },
     });
   } catch (error) {
     res.status(400).json({
@@ -178,11 +426,78 @@ export async function updatePanelMembers(req, res) {
   }
 }
 
-// Guide Assignment
+export async function updateProject(req, res) {
+  try {
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can edit projects.",
+      });
+    }
+
+    const { id } = req.params;
+    const project = await Project.findById(id);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+
+    if (!verifyContext(project, req.coordinator)) {
+      return res.status(403).json({
+        success: false,
+        message: "Project not in your department.",
+      });
+    }
+
+    Object.assign(project, req.body);
+    await project.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Project updated successfully.",
+      data: project,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function deleteProject(req, res) {
+  try {
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can delete projects.",
+      });
+    }
+
+    const { id } = req.params;
+    await ProjectService.deleteProject(id, req.user._id);
+
+    res.status(200).json({
+      success: true,
+      message: "Project deleted successfully.",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// ==================== Guide Assignment ====================
+
 export async function assignGuide(req, res) {
   try {
     const { projectId } = req.params;
-    const { guideFacultyId } = req.body;
+    const { guideFacultyEmpId } = req.body;
 
     const project = await Project.findById(projectId);
     if (!project) {
@@ -192,25 +507,61 @@ export async function assignGuide(req, res) {
       });
     }
 
-    // Verify context
-    if (
-      project.academicYear !== req.coordinator.academicYear ||
-      project.school !== req.coordinator.school ||
-      project.department !== req.coordinator.department
-    ) {
+    if (!verifyContext(project, req.coordinator)) {
       return res.status(403).json({
         success: false,
-        message: "Project not in your coordinator context.",
+        message: "Project not in your department.",
       });
     }
 
-    project.guideFaculty = guideFacultyId;
+    // Validate guide faculty
+    const guide = await Faculty.findOne({ employeeId: guideFacultyEmpId });
+
+    if (!guide) {
+      return res.status(404).json({
+        success: false,
+        message: "Guide faculty not found in database.",
+      });
+    }
+
+    if (!verifyContext(guide, req.coordinator)) {
+      return res.status(400).json({
+        success: false,
+        message: "Guide must be from the same department.",
+      });
+    }
+
+    // Validate specialization match
+    if (guide.specialization !== project.specialization) {
+      return res.status(400).json({
+        success: false,
+        message: `Specialization mismatch blocked. Guide specializes in ${guide.specialization}, but project requires ${project.specialization}.`,
+      });
+    }
+
+    // Check max projects per guide
+    const config = await DepartmentConfig.findOne(getCoordinatorContext(req));
+    if (config?.maxProjectsPerGuide) {
+      const projectCount = await Project.countDocuments({
+        guideFaculty: guide._id,
+        status: "active",
+      });
+
+      if (projectCount >= config.maxProjectsPerGuide) {
+        return res.status(400).json({
+          success: false,
+          message: `Guide already has maximum ${config.maxProjectsPerGuide} projects assigned.`,
+        });
+      }
+    }
+
+    project.guideFaculty = guide._id;
     await project.save();
 
-    logger.info("guide_assigned", {
+    logger.info("guide_assigned_by_coordinator", {
       projectId,
-      guideFacultyId,
-      assignedBy: req.user._id,
+      guideFacultyId: guide._id,
+      coordinatorId: req.coordinator._id,
     });
 
     res.status(200).json({
@@ -225,11 +576,10 @@ export async function assignGuide(req, res) {
   }
 }
 
-// Guide Reassignment
 export async function reassignGuide(req, res) {
   try {
     const { projectId } = req.params;
-    const { newGuideFacultyId, reason } = req.body;
+    const { newGuideFacultyEmpId, reason } = req.body;
 
     const project = await Project.findById(projectId);
     if (!project) {
@@ -239,32 +589,69 @@ export async function reassignGuide(req, res) {
       });
     }
 
-    // Add to history
+    if (!verifyContext(project, req.coordinator)) {
+      return res.status(403).json({
+        success: false,
+        message: "Project not in your department.",
+      });
+    }
+
+    // Validate new guide
+    const newGuide = await Faculty.findOne({
+      employeeId: newGuideFacultyEmpId,
+    });
+
+    if (!newGuide) {
+      return res.status(404).json({
+        success: false,
+        message: "New guide faculty not found in database.",
+      });
+    }
+
+    if (!verifyContext(newGuide, req.coordinator)) {
+      return res.status(400).json({
+        success: false,
+        message: "New guide must be from the same department.",
+      });
+    }
+
+    // Validate specialization match
+    if (newGuide.specialization !== project.specialization) {
+      return res.status(400).json({
+        success: false,
+        message: `Specialization mismatch blocked. New guide specializes in ${newGuide.specialization}, but project requires ${project.specialization}.`,
+      });
+    }
+
+    const oldGuideFacultyId = project.guideFaculty;
+
+    // Mark current project as inactive
+    project.status = "inactive";
+    project.history = project.history || [];
     project.history.push({
       action: "guide_reassigned",
-      previousGuideFaculty: project.guideFaculty,
-      newGuideFaculty: newGuideFacultyId,
+      previousGuideFaculty: oldGuideFacultyId,
+      newGuideFaculty: newGuide._id,
       reason,
       performedBy: req.user._id,
       performedAt: new Date(),
     });
-
-    // Set old project inactive
-    project.status = "inactive";
     await project.save();
 
-    // Create new project
+    // Create new active project
     const newProject = new Project({
       ...project.toObject(),
       _id: new mongoose.Types.ObjectId(),
-      guideFaculty: newGuideFacultyId,
+      guideFaculty: newGuide._id,
       status: "active",
       previousProjectId: project._id,
       history: [
         {
-          action: "created",
-          newGuideFaculty: newGuideFacultyId,
-          reason: "Guide reassignment",
+          action: "created_from_reassignment",
+          previousProject: project._id,
+          previousGuide: oldGuideFacultyId,
+          currentGuide: newGuide._id,
+          reason,
           performedBy: req.user._id,
           performedAt: new Date(),
         },
@@ -273,17 +660,23 @@ export async function reassignGuide(req, res) {
 
     await newProject.save();
 
-    logger.info("guide_reassigned", {
+    logger.info("guide_reassigned_by_coordinator", {
       oldProjectId: projectId,
       newProjectId: newProject._id,
-      newGuideFacultyId,
-      performedBy: req.user._id,
+      oldGuide: oldGuideFacultyId,
+      newGuide: newGuide._id,
+      coordinatorId: req.coordinator._id,
     });
 
     res.status(200).json({
       success: true,
-      message: "Guide reassigned successfully.",
-      data: { newProjectId: newProject._id },
+      message:
+        "Guide reassigned successfully. Old project marked inactive, new project created.",
+      data: {
+        oldProjectId: project._id,
+        newProjectId: newProject._id,
+        newGuideName: newGuide.name,
+      },
     });
   } catch (error) {
     res.status(400).json({
@@ -293,33 +686,253 @@ export async function reassignGuide(req, res) {
   }
 }
 
-// Panel Assignment
+// ==================== Panel Management ====================
+
+export async function createPanel(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+    const { memberEmployeeIds, venue, dateTime } = req.body;
+
+    // Validate all panel members exist and belong to dept
+    const members = await Faculty.find({
+      employeeId: { $in: memberEmployeeIds },
+    });
+
+    if (members.length !== memberEmployeeIds.length) {
+      return res.status(404).json({
+        success: false,
+        message: "One or more faculty members not found in database.",
+      });
+    }
+
+    // Verify all members are from same dept
+    const invalidMembers = members.filter(
+      (m) => !verifyContext(m, req.coordinator),
+    );
+    if (invalidMembers.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "All panel members must be from the same department.",
+        invalidMembers: invalidMembers.map((m) => m.employeeId),
+      });
+    }
+
+    req.body.academicYear = context.academicYear;
+    req.body.school = context.school;
+    req.body.department = context.department;
+
+    const panel = await PanelService.createPanel(req.body, req.user._id);
+
+    logger.info("panel_created_by_coordinator", {
+      panelId: panel._id,
+      coordinatorId: req.coordinator._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Panel created successfully.",
+      data: panel,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function autoCreatePanels(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const result = await PanelService.autoCreatePanels(
+      context.academicYear,
+      context.school,
+      context.department,
+      req.user._id,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Auto-created ${result.panelsCreated} panels.`,
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function getPanelList(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+    const filters = { ...req.query, ...context };
+
+    const panels = await PanelService.getPanelList(filters);
+
+    res.status(200).json({
+      success: true,
+      data: panels,
+      count: panels.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function updatePanelMembers(req, res) {
+  try {
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can edit panels.",
+      });
+    }
+
+    const { id } = req.params;
+    const { memberEmployeeIds } = req.body;
+
+    const panel = await Panel.findById(id);
+    if (!panel) {
+      return res.status(404).json({
+        success: false,
+        message: "Panel not found.",
+      });
+    }
+
+    if (!verifyContext(panel, req.coordinator)) {
+      return res.status(403).json({
+        success: false,
+        message: "Panel not in your department.",
+      });
+    }
+
+    // Validate new members
+    const members = await Faculty.find({
+      employeeId: { $in: memberEmployeeIds },
+    });
+
+    if (members.length !== memberEmployeeIds.length) {
+      return res.status(404).json({
+        success: false,
+        message: "One or more faculty members not found in database.",
+      });
+    }
+
+    const invalidMembers = members.filter(
+      (m) => !verifyContext(m, req.coordinator),
+    );
+    if (invalidMembers.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: "All panel members must be from the same department.",
+      });
+    }
+
+    // Update panel members (not creating new panel)
+    panel.members = members.map((m) => ({
+      faculty: m._id,
+      role: "member",
+    }));
+
+    panel.history = panel.history || [];
+    panel.history.push({
+      action: "members_updated",
+      performedBy: req.user._id,
+      performedAt: new Date(),
+    });
+
+    await panel.save();
+
+    logger.info("panel_members_updated_by_coordinator", {
+      panelId: id,
+      coordinatorId: req.coordinator._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Panel members updated successfully.",
+      data: panel,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function deletePanel(req, res) {
+  try {
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can delete panels.",
+      });
+    }
+
+    const { id } = req.params;
+    const panel = await Panel.findById(id);
+
+    if (!panel) {
+      return res.status(404).json({
+        success: false,
+        message: "Panel not found.",
+      });
+    }
+
+    if (!verifyContext(panel, req.coordinator)) {
+      return res.status(403).json({
+        success: false,
+        message: "Panel not in your department.",
+      });
+    }
+
+    // Check if panel assigned to any projects
+    const projectCount = await Project.countDocuments({ panel: id });
+    if (projectCount > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot delete panel. It is assigned to ${projectCount} projects.`,
+      });
+    }
+
+    await Panel.findByIdAndDelete(id);
+
+    logger.info("panel_deleted_by_coordinator", {
+      panelId: id,
+      coordinatorId: req.coordinator._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Panel deleted successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// ==================== Panel Assignment ====================
+
 export async function assignPanel(req, res) {
   try {
     const { projectId } = req.params;
     const { panelId } = req.body;
 
-    await PanelService.assignPanelToProject(panelId, projectId, req.user._id);
+    const [project, panel] = await Promise.all([
+      Project.findById(projectId),
+      Panel.findById(panelId),
+    ]);
 
-    res.status(200).json({
-      success: true,
-      message: "Panel assigned successfully.",
-    });
-  } catch (error) {
-    res.status(400).json({
-      success: false,
-      message: error.message,
-    });
-  }
-}
-
-// Review Panel Assignment
-export async function assignReviewPanel(req, res) {
-  try {
-    const { projectId } = req.params;
-    const { reviewType, panelId } = req.body;
-
-    const project = await Project.findById(projectId);
     if (!project) {
       return res.status(404).json({
         success: false,
@@ -327,34 +940,47 @@ export async function assignReviewPanel(req, res) {
       });
     }
 
-    // Check if review panel already assigned
-    const existing = project.reviewPanels.find(
-      (rp) => rp.reviewType === reviewType,
-    );
-    if (existing) {
-      existing.panel = panelId;
-      existing.assignedAt = new Date();
-      existing.assignedBy = req.user._id;
-    } else {
-      project.reviewPanels.push({
-        reviewType,
-        panel: panelId,
-        assignedBy: req.user._id,
+    if (!panel) {
+      return res.status(404).json({
+        success: false,
+        message: "Panel not found.",
       });
     }
 
+    if (
+      !verifyContext(project, req.coordinator) ||
+      !verifyContext(panel, req.coordinator)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Project and panel must be in your department.",
+      });
+    }
+
+    // Check max projects per panel
+    const config = await DepartmentConfig.findOne(getCoordinatorContext(req));
+    if (config?.maxProjectsPerPanel) {
+      const projectCount = await Project.countDocuments({ panel: panelId });
+      if (projectCount >= config.maxProjectsPerPanel) {
+        return res.status(400).json({
+          success: false,
+          message: `Panel already has maximum ${config.maxProjectsPerPanel} projects assigned.`,
+        });
+      }
+    }
+
+    project.panel = panelId;
     await project.save();
 
-    logger.info("review_panel_assigned", {
+    logger.info("panel_assigned_by_coordinator", {
       projectId,
-      reviewType,
       panelId,
-      assignedBy: req.user._id,
+      coordinatorId: req.coordinator._id,
     });
 
     res.status(200).json({
       success: true,
-      message: "Review panel assigned successfully.",
+      message: "Panel assigned to project successfully.",
     });
   } catch (error) {
     res.status(400).json({
@@ -364,7 +990,181 @@ export async function assignReviewPanel(req, res) {
   }
 }
 
-// Team Merging
+export async function assignReviewPanel(req, res) {
+  try {
+    const { projectId } = req.params;
+    const { reviewType, panelId } = req.body;
+
+    const [project, panel] = await Promise.all([
+      Project.findById(projectId),
+      Panel.findById(panelId),
+    ]);
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+
+    if (!panel) {
+      return res.status(404).json({
+        success: false,
+        message: "Panel not found.",
+      });
+    }
+
+    if (
+      !verifyContext(project, req.coordinator) ||
+      !verifyContext(panel, req.coordinator)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Project and panel must be in your department.",
+      });
+    }
+
+    // Validate review type exists in marking schema
+    const schema = await MarkingSchema.findOne(getCoordinatorContext(req));
+    const validReview = schema?.reviews.find(
+      (r) => r.reviewName === reviewType,
+    );
+
+    if (!validReview) {
+      return res.status(400).json({
+        success: false,
+        message: `Invalid review type: ${reviewType}`,
+        validReviews: schema?.reviews.map((r) => r.reviewName) || [],
+      });
+    }
+
+    // Update or add review panel
+    project.reviewPanels = project.reviewPanels || [];
+    const existingIdx = project.reviewPanels.findIndex(
+      (rp) => rp.reviewType === reviewType,
+    );
+
+    if (existingIdx >= 0) {
+      project.reviewPanels[existingIdx].panel = panelId;
+      project.reviewPanels[existingIdx].assignedBy = req.user._id;
+      project.reviewPanels[existingIdx].assignedAt = new Date();
+    } else {
+      project.reviewPanels.push({
+        reviewType,
+        panel: panelId,
+        assignedBy: req.user._id,
+        assignedAt: new Date(),
+      });
+    }
+
+    await project.save();
+
+    logger.info("review_panel_assigned_by_coordinator", {
+      projectId,
+      reviewType,
+      panelId,
+      coordinatorId: req.coordinator._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: `Panel assigned to ${reviewType} successfully.`,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function autoAssignPanels(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const result = await PanelService.autoAssignPanels(
+      context.academicYear,
+      context.school,
+      context.department,
+      req.user._id,
+    );
+
+    res.status(200).json({
+      success: true,
+      message: `Auto-assigned panels to ${result.projectsAssigned} projects.`,
+      data: result,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function reassignPanel(req, res) {
+  try {
+    const { projectId } = req.params;
+    const { panelId, reason } = req.body;
+
+    const [project, panel] = await Promise.all([
+      Project.findById(projectId),
+      Panel.findById(panelId),
+    ]);
+
+    if (!project || !panel) {
+      return res.status(404).json({
+        success: false,
+        message: "Project or panel not found.",
+      });
+    }
+
+    if (
+      !verifyContext(project, req.coordinator) ||
+      !verifyContext(panel, req.coordinator)
+    ) {
+      return res.status(403).json({
+        success: false,
+        message: "Project and panel must be in your department.",
+      });
+    }
+
+    const oldPanelId = project.panel;
+
+    project.panel = panelId;
+    project.history = project.history || [];
+    project.history.push({
+      action: "panel_reassigned",
+      previousPanel: oldPanelId,
+      newPanel: panelId,
+      reason,
+      performedBy: req.user._id,
+      performedAt: new Date(),
+    });
+
+    await project.save();
+
+    logger.info("panel_reassigned_by_coordinator", {
+      projectId,
+      oldPanel: oldPanelId,
+      newPanel: panelId,
+      coordinatorId: req.coordinator._id,
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Panel reassigned successfully.",
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// ==================== Team Operations ====================
+
 export async function mergeTeams(req, res) {
   try {
     const { projectId1, projectId2, reason } = req.body;
@@ -381,26 +1181,20 @@ export async function mergeTeams(req, res) {
       });
     }
 
-    // Verify context
     if (
-      project1.academicYear !== req.coordinator.academicYear ||
-      project1.school !== req.coordinator.school ||
-      project1.department !== req.coordinator.department
+      !verifyContext(project1, req.coordinator) ||
+      !verifyContext(project2, req.coordinator)
     ) {
       return res.status(403).json({
         success: false,
-        message: "Projects not in your coordinator context.",
+        message: "Both projects must be in your department.",
       });
     }
 
-    // Check team size
-    const config = await departmentConfig.findOne({
-      academicYear: req.coordinator.academicYear,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-    });
-
+    // Check team size limits
+    const config = await DepartmentConfig.findOne(getCoordinatorContext(req));
     const mergedSize = project1.students.length + project2.students.length;
+
     if (config && mergedSize > config.maxTeamSize) {
       return res.status(400).json({
         success: false,
@@ -411,34 +1205,43 @@ export async function mergeTeams(req, res) {
     // Merge students
     project1.students.push(...project2.students);
     project1.teamSize = mergedSize;
+    project1.history = project1.history || [];
     project1.history.push({
       action: "team_merged",
       mergedWithProject: project2._id,
       reason,
       performedBy: req.user._id,
+      performedAt: new Date(),
     });
 
     // Deactivate project2
     project2.status = "inactive";
+    project2.history = project2.history || [];
     project2.history.push({
-      action: "deactivated",
-      reason: "Team merged into another project",
+      action: "merged_into_another_project",
+      mergedIntoProject: project1._id,
+      reason,
       performedBy: req.user._id,
+      performedAt: new Date(),
     });
 
     await Promise.all([project1.save(), project2.save()]);
 
-    logger.info("teams_merged", {
-      project1Id: projectId1,
-      project2Id: projectId2,
+    logger.info("teams_merged_by_coordinator", {
+      project1: projectId1,
+      project2: projectId2,
       newTeamSize: mergedSize,
-      performedBy: req.user._id,
+      coordinatorId: req.coordinator._id,
     });
 
     res.status(200).json({
       success: true,
       message: "Teams merged successfully.",
-      data: { mergedProjectId: project1._id, newTeamSize: mergedSize },
+      data: {
+        mergedProjectId: project1._id,
+        inactiveProjectId: project2._id,
+        newTeamSize: mergedSize,
+      },
     });
   } catch (error) {
     res.status(400).json({
@@ -448,56 +1251,164 @@ export async function mergeTeams(req, res) {
   }
 }
 
-// Marking Schema
-export async function getMarkingSchema(req, res) {
+export async function splitTeam(req, res) {
   try {
-    const schema = await MarkingSchemaService.getMarkingSchema(
-      req.coordinator.academicYear,
-      req.coordinator.school,
-      req.coordinator.department,
+    const { projectId, studentIds, reason } = req.body;
+
+    const project = await Project.findById(projectId).populate("students");
+
+    if (!project) {
+      return res.status(404).json({
+        success: false,
+        message: "Project not found.",
+      });
+    }
+
+    if (!verifyContext(project, req.coordinator)) {
+      return res.status(403).json({
+        success: false,
+        message: "Project not in your department.",
+      });
+    }
+
+    // Validate team sizes after split
+    const config = await DepartmentConfig.findOne(getCoordinatorContext(req));
+    const remainingSize = project.students.length - studentIds.length;
+
+    if (config) {
+      if (
+        studentIds.length < config.minTeamSize ||
+        studentIds.length > config.maxTeamSize
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `New team size (${studentIds.length}) must be between ${config.minTeamSize} and ${config.maxTeamSize}.`,
+        });
+      }
+
+      if (
+        remainingSize < config.minTeamSize ||
+        remainingSize > config.maxTeamSize
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: `Remaining team size (${remainingSize}) must be between ${config.minTeamSize} and ${config.maxTeamSize}.`,
+        });
+      }
+    }
+
+    // Remove students from original project
+    project.students = project.students.filter(
+      (s) => !studentIds.includes(s._id.toString()),
     );
+    project.teamSize = remainingSize;
+    project.history = project.history || [];
+    project.history.push({
+      action: "team_split",
+      studentsRemoved: studentIds,
+      reason,
+      performedBy: req.user._id,
+      performedAt: new Date(),
+    });
+
+    await project.save();
+
+    logger.info("team_split_by_coordinator", {
+      originalProject: projectId,
+      studentsRemoved: studentIds.length,
+      remainingSize,
+      coordinatorId: req.coordinator._id,
+    });
 
     res.status(200).json({
       success: true,
-      data: schema,
+      message:
+        "Team split successfully. Create a new project for the removed students.",
+      data: {
+        originalProjectId: project._id,
+        remainingTeamSize: remainingSize,
+        removedStudentIds: studentIds,
+      },
     });
   } catch (error) {
-    res.status(404).json({
+    res.status(400).json({
       success: false,
       message: error.message,
     });
   }
 }
 
-export async function updateMarkingSchema(req, res) {
-  try {
-    const { id } = req.params;
+// ==================== Marking Schema & Components ====================
 
-    // Verify ownership
+export async function getMarkingSchema(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+    const schema = await MarkingSchema.findOne(context).lean();
+
+    if (!schema) {
+      return res.status(404).json({
+        success: false,
+        message: "Marking schema not found for your department.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: schema,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function updateMarkingSchemaDeadlines(req, res) {
+  try {
+    if (!req.coordinator.isPrimary) {
+      return res.status(403).json({
+        success: false,
+        message: "Only primary coordinator can update deadlines.",
+      });
+    }
+
+    const { id } = req.params;
+    const { deadlines } = req.body; // { reviewName: { from, to }, ... }
+
     const schema = await MarkingSchema.findById(id);
-    if (
-      !schema ||
-      schema.academicYear !== req.coordinator.academicYear ||
-      schema.school !== req.coordinator.school ||
-      schema.department !== req.coordinator.department
-    ) {
+
+    if (!schema) {
+      return res.status(404).json({
+        success: false,
+        message: "Marking schema not found.",
+      });
+    }
+
+    if (!verifyContext(schema, req.coordinator)) {
       return res.status(403).json({
         success: false,
         message: "Not authorized to update this marking schema.",
       });
     }
 
-    Object.assign(schema, req.body);
+    // Update deadlines
+    schema.reviews.forEach((review) => {
+      if (deadlines[review.reviewName]) {
+        review.deadline = deadlines[review.reviewName];
+      }
+    });
+
     await schema.save();
 
-    logger.info("marking_schema_updated_by_coordinator", {
+    logger.info("marking_schema_deadlines_updated_by_coordinator", {
       schemaId: id,
-      updatedBy: req.user._id,
+      coordinatorId: req.coordinator._id,
     });
 
     res.status(200).json({
       success: true,
-      message: "Marking schema updated successfully.",
+      message: "Deadlines updated successfully.",
       data: schema,
     });
   } catch (error) {
@@ -508,14 +1419,10 @@ export async function updateMarkingSchema(req, res) {
   }
 }
 
-// Component Library
 export async function getComponentLibrary(req, res) {
   try {
-    const library = await ComponentLibrary.findOne({
-      academicYear: req.coordinator.academicYear,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-    }).lean();
+    const context = getCoordinatorContext(req);
+    const library = await ComponentLibrary.findOne(context).lean();
 
     if (!library) {
       return res.status(404).json({
@@ -536,35 +1443,98 @@ export async function getComponentLibrary(req, res) {
   }
 }
 
-export async function updateComponentLibrary(req, res) {
-  try {
-    const { id } = req.params;
+// ==================== Department Config ====================
 
-    const library = await ComponentLibrary.findById(id);
-    if (
-      !library ||
-      library.academicYear !== req.coordinator.academicYear ||
-      library.school !== req.coordinator.school ||
-      library.department !== req.coordinator.department
-    ) {
-      return res.status(403).json({
+export async function getDepartmentConfig(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+    const config = await DepartmentConfig.findOne(context).lean();
+
+    if (!config) {
+      return res.status(404).json({
         success: false,
-        message: "Not authorized to update this component library.",
+        message: "Department configuration not found.",
       });
     }
 
-    Object.assign(library, req.body);
-    await library.save();
+    res.status(200).json({
+      success: true,
+      data: config,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
 
-    logger.info("component_library_updated_by_coordinator", {
-      libraryId: id,
-      updatedBy: req.user._id,
+// ==================== Requests ====================
+
+export async function getRequests(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const requests = await Request.find({
+      ...context,
+      status: { $in: ["pending", "approved", "rejected"] },
+    })
+      .populate("faculty", "name employeeId")
+      .populate("student", "regNo name")
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: requests,
+      count: requests.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function handleRequest(req, res) {
+  try {
+    const { id } = req.params;
+    const { status, remarks } = req.body;
+
+    if (!["approved", "rejected"].includes(status)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status. Must be 'approved' or 'rejected'.",
+      });
+    }
+
+    const request = await Request.findById(id);
+
+    if (!request) {
+      return res.status(404).json({
+        success: false,
+        message: "Request not found.",
+      });
+    }
+
+    request.status = status;
+    request.remarks = remarks;
+    request.reviewedBy = req.user._id;
+    request.reviewedAt = new Date();
+
+    await request.save();
+
+    logger.info("request_handled_by_coordinator", {
+      requestId: id,
+      status,
+      coordinatorId: req.coordinator._id,
     });
 
     res.status(200).json({
       success: true,
-      message: "Component library updated successfully.",
-      data: library,
+      message: `Request ${status} successfully.`,
+      data: request,
     });
   } catch (error) {
     res.status(400).json({
@@ -574,16 +1544,180 @@ export async function updateComponentLibrary(req, res) {
   }
 }
 
-// Reports (filtered to coordinator context)
+// ==================== Broadcasts ====================
+
+export async function getBroadcasts(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const broadcasts = await BroadcastMessage.find({
+      $or: [{ targetSchools: { $size: 0 } }, { targetSchools: context.school }],
+      $and: [
+        {
+          $or: [
+            { targetDepartments: { $size: 0 } },
+            { targetDepartments: context.department },
+          ],
+        },
+      ],
+    })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    res.status(200).json({
+      success: true,
+      data: broadcasts,
+      count: broadcasts.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function createBroadcast(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const broadcast = new BroadcastMessage({
+      ...req.body,
+      targetSchools: [context.school],
+      targetDepartments: [context.department],
+      createdBy: req.user._id,
+    });
+
+    await broadcast.save();
+
+    logger.info("broadcast_created_by_coordinator", {
+      broadcastId: broadcast._id,
+      coordinatorId: req.coordinator._id,
+    });
+
+    res.status(201).json({
+      success: true,
+      message: "Broadcast created successfully.",
+      data: broadcast,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function updateBroadcast(req, res) {
+  try {
+    const { id } = req.params;
+
+    const broadcast = await BroadcastMessage.findById(id);
+
+    if (!broadcast) {
+      return res.status(404).json({
+        success: false,
+        message: "Broadcast not found.",
+      });
+    }
+
+    if (broadcast.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only edit broadcasts you created.",
+      });
+    }
+
+    Object.assign(broadcast, req.body);
+    await broadcast.save();
+
+    res.status(200).json({
+      success: true,
+      message: "Broadcast updated successfully.",
+      data: broadcast,
+    });
+  } catch (error) {
+    res.status(400).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function deleteBroadcast(req, res) {
+  try {
+    const { id } = req.params;
+
+    const broadcast = await BroadcastMessage.findById(id);
+
+    if (!broadcast) {
+      return res.status(404).json({
+        success: false,
+        message: "Broadcast not found.",
+      });
+    }
+
+    if (broadcast.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: "You can only delete broadcasts you created.",
+      });
+    }
+
+    await BroadcastMessage.findByIdAndDelete(id);
+
+    res.status(200).json({
+      success: true,
+      message: "Broadcast deleted successfully.",
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+// ==================== Reports ====================
+
+export async function getOverviewReport(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const [totalProjects, totalStudents, totalFaculty, totalPanels] =
+      await Promise.all([
+        Project.countDocuments({ ...context, status: "active" }),
+        Student.countDocuments(context),
+        Faculty.countDocuments(context),
+        Panel.countDocuments({ ...context, isActive: true }),
+      ]);
+
+    res.status(200).json({
+      success: true,
+      data: {
+        totalProjects,
+        totalStudents,
+        totalFaculty,
+        totalPanels,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
 export async function getProjectsReport(req, res) {
   try {
-    const filters = {
-      academicYear: req.coordinator.academicYear,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-    };
+    const context = getCoordinatorContext(req);
 
-    const projects = await ProjectService.getProjectList(filters);
+    const projects = await Project.find({ ...context, status: "active" })
+      .populate("students", "regNo name")
+      .populate("guideFaculty", "name employeeId")
+      .populate("panel")
+      .lean();
 
     res.status(200).json({
       success: true,
@@ -600,19 +1734,16 @@ export async function getProjectsReport(req, res) {
 
 export async function getMarksReport(req, res) {
   try {
-    const marks = await Marks.find({
-      academicYear: req.coordinator.academicYear,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-    })
-      .populate("student", "regNo name")
-      .populate("faculty", "name employeeId")
-      .populate("project", "name")
+    const context = getCoordinatorContext(req);
+
+    const students = await Student.find(context)
+      .select("regNo name reviews")
       .lean();
 
     res.status(200).json({
       success: true,
-      data: marks,
+      data: students,
+      count: students.length,
     });
   } catch (error) {
     res.status(500).json({
@@ -624,29 +1755,108 @@ export async function getMarksReport(req, res) {
 
 export async function getPanelsReport(req, res) {
   try {
-    const panels = await Panel.find({
-      academicYear: req.coordinator.academicYear,
-      school: req.coordinator.school,
-      department: req.coordinator.department,
-      isActive: true,
-    })
+    const context = getCoordinatorContext(req);
+
+    const panels = await Panel.find({ ...context, isActive: true })
       .populate("members.faculty", "name employeeId")
       .lean();
 
-    // Get project count for each panel
     const panelsWithProjects = await Promise.all(
       panels.map(async (panel) => {
         const projectCount = await Project.countDocuments({ panel: panel._id });
-        return {
-          ...panel,
-          projectCount,
-        };
+        return { ...panel, projectCount };
       }),
     );
 
     res.status(200).json({
       success: true,
       data: panelsWithProjects,
+      count: panelsWithProjects.length,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function getFacultyWorkloadReport(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const faculty = await Faculty.find(context)
+      .select("name employeeId")
+      .lean();
+
+    const workload = await Promise.all(
+      faculty.map(async (f) => {
+        const [asGuide, asPanelMember] = await Promise.all([
+          Project.countDocuments({ guideFaculty: f._id, status: "active" }),
+          Panel.countDocuments({ "members.faculty": f._id, isActive: true }),
+        ]);
+
+        return {
+          ...f,
+          projectsAsGuide: asGuide,
+          panelsAsMember: asPanelMember,
+        };
+      }),
+    );
+
+    res.status(200).json({
+      success: true,
+      data: workload,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function getStudentPerformanceReport(req, res) {
+  try {
+    const context = getCoordinatorContext(req);
+
+    const students = await Student.find(context)
+      .select("regNo name reviews PAT requiresContribution contributionType")
+      .lean();
+
+    // Process to calculate totals
+    const performance = students.map((student) => {
+      let processedReviews = {};
+      if (student.reviews instanceof Map) {
+        processedReviews = Object.fromEntries(student.reviews);
+      } else {
+        processedReviews = student.reviews || {};
+      }
+
+      let totalMarks = 0;
+      Object.values(processedReviews).forEach((review) => {
+        if (review.marks) {
+          Object.values(review.marks).forEach((mark) => {
+            totalMarks += Number(mark) || 0;
+          });
+        }
+      });
+
+      return {
+        regNo: student.regNo,
+        name: student.name,
+        totalMarks,
+        PAT: student.PAT,
+        requiresContribution: student.requiresContribution,
+        contributionType: student.contributionType,
+        reviews: processedReviews,
+      };
+    });
+
+    res.status(200).json({
+      success: true,
+      data: performance,
+      count: performance.length,
     });
   } catch (error) {
     res.status(500).json({

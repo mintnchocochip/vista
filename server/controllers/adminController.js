@@ -1206,57 +1206,235 @@ export async function updatePanel(req, res) {
 
 // ===== MASTER DATA =====
 
+/**
+ * Bulk create master data (schools, departments, academic years)
+ */
+export async function createMasterDataBulk(req, res) {
+  try {
+    const { schools, departments, academicYears } = req.body;
+
+    const masterData = await getOrCreateMasterData();
+
+    const results = {
+      schools: { created: 0, skipped: 0, errors: [] },
+      departments: { created: 0, skipped: 0, errors: [] },
+      academicYears: { created: 0, skipped: 0, errors: [] },
+    };
+
+    // Process schools
+    if (Array.isArray(schools)) {
+      for (const school of schools) {
+        try {
+          const exists = masterData.schools.find(
+            (s) => s.code === school.code || s.name === school.name,
+          );
+
+          if (exists) {
+            results.schools.skipped++;
+            logger.warn("school_skipped_duplicate", {
+              name: school.name,
+              code: school.code,
+            });
+          } else {
+            masterData.schools.push({
+              name: school.name,
+              code: school.code,
+            });
+            results.schools.created++;
+          }
+        } catch (error) {
+          results.schools.errors.push({
+            school: school.name,
+            error: error.message,
+          });
+        }
+      }
+    }
+
+    // Process departments
+    if (Array.isArray(departments)) {
+      for (const dept of departments) {
+        try {
+          // Verify school exists
+          const schoolExists = masterData.schools.find(
+            (s) => s.code === dept.school,
+          );
+
+          if (!schoolExists) {
+            results.departments.errors.push({
+              department: dept.name,
+              error: `School '${dept.school}' not found`,
+            });
+            continue;
+          }
+
+          const exists = masterData.departments.find(
+            (d) =>
+              (d.code === dept.code || d.name === dept.name) &&
+              d.school === dept.school,
+          );
+
+          if (exists) {
+            results.departments.skipped++;
+            logger.warn("department_skipped_duplicate", {
+              name: dept.name,
+              code: dept.code,
+              school: dept.school,
+            });
+          } else {
+            masterData.departments.push({
+              name: dept.name,
+              code: dept.code,
+              school: dept.school,
+            });
+            results.departments.created++;
+          }
+        } catch (error) {
+          results.departments.errors.push({
+            department: dept.name,
+            error: error.message,
+          });
+        }
+      }
+    }
+
+    // Process academic years
+    if (Array.isArray(academicYears)) {
+      for (const ay of academicYears) {
+        try {
+          const exists = masterData.academicYears.find(
+            (year) => year.year === ay.year,
+          );
+
+          if (exists) {
+            results.academicYears.skipped++;
+            logger.warn("academic_year_skipped_duplicate", {
+              year: ay.year,
+            });
+          } else {
+            masterData.academicYears.push({
+              year: ay.year,
+              isActive: ay.isActive !== undefined ? ay.isActive : true,
+            });
+            results.academicYears.created++;
+          }
+        } catch (error) {
+          results.academicYears.errors.push({
+            year: ay.year,
+            error: error.message,
+          });
+        }
+      }
+    }
+
+    // Save all at once
+    await masterData.save();
+
+    logger.info("master_data_bulk_created", {
+      results,
+      createdBy: req.user._id,
+    });
+
+    const totalCreated =
+      results.schools.created +
+      results.departments.created +
+      results.academicYears.created;
+
+    const totalSkipped =
+      results.schools.skipped +
+      results.departments.skipped +
+      results.academicYears.skipped;
+
+    const totalErrors =
+      results.schools.errors.length +
+      results.departments.errors.length +
+      results.academicYears.errors.length;
+
+    res.status(201).json({
+      success: true,
+      message: `Master data created: ${totalCreated} created, ${totalSkipped} skipped, ${totalErrors} errors.`,
+      data: results,
+    });
+  } catch (error) {
+    logger.error("create_master_data_bulk_error", {
+      error: error.message,
+    });
+
+    res.status(500).json({
+      success: false,
+      message: "Error creating master data.",
+      error: error.message,
+    });
+  }
+}
+
+/**
+ * Get or create master data
+ */
+async function getOrCreateMasterData() {
+  let masterData = await MasterData.findOne();
+
+  if (!masterData) {
+    masterData = new MasterData({
+      schools: [],
+      departments: [],
+      academicYears: [],
+    });
+    await masterData.save();
+    logger.info("master_data_initialized", {
+      message: "Master data collection created",
+    });
+  }
+
+  return masterData;
+}
+
+/**
+ * Get master data
+ */
 export async function getMasterData(req, res) {
   try {
-    const masterData = await MasterData.findOne().lean();
-
-    if (!masterData) {
-      return res.status(404).json({
-        success: false,
-        message: "Master data not found.",
-      });
-    }
+    const masterData = await getOrCreateMasterData();
 
     res.status(200).json({
       success: true,
       data: masterData,
     });
   } catch (error) {
+    logger.error("get_master_data_error", {
+      error: error.message,
+    });
+
     res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error retrieving master data.",
     });
   }
 }
 
+/**
+ * Create school
+ */
 export async function createSchool(req, res) {
   try {
-    const { name, code, displayName } = req.body;
+    const { name, code } = req.body;
 
-    const masterData = await MasterData.findOne();
-    if (!masterData) {
-      return res.status(404).json({
-        success: false,
-        message: "Master data not initialized.",
-      });
-    }
+    const masterData = await getOrCreateMasterData();
 
-    // Check duplicate code
-    const exists = masterData.schools.find((s) => s.code === code);
+    // Check if school already exists
+    const exists = masterData.schools.find(
+      (s) => s.code === code || s.name === name,
+    );
+
     if (exists) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: "School code already exists.",
+        message: "School with this name or code already exists.",
       });
     }
 
-    masterData.schools.push({
-      name,
-      code,
-      displayName: displayName || name,
-      isActive: true,
-    });
-
+    // Add school
+    masterData.schools.push({ name, code });
     await masterData.save();
 
     logger.info("school_created", {
@@ -1268,30 +1446,32 @@ export async function createSchool(req, res) {
     res.status(201).json({
       success: true,
       message: "School created successfully.",
-      data: masterData.schools[masterData.schools.length - 1],
+      data: { name, code },
     });
   } catch (error) {
-    res.status(400).json({
+    logger.error("create_school_error", {
+      error: error.message,
+    });
+
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error creating school.",
     });
   }
 }
 
+/**
+ * Update school
+ */
 export async function updateSchool(req, res) {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { name, code } = req.body;
 
-    const masterData = await MasterData.findOne();
-    if (!masterData) {
-      return res.status(404).json({
-        success: false,
-        message: "Master data not found.",
-      });
-    }
+    const masterData = await getOrCreateMasterData();
 
     const school = masterData.schools.id(id);
+
     if (!school) {
       return res.status(404).json({
         success: false,
@@ -1299,11 +1479,26 @@ export async function updateSchool(req, res) {
       });
     }
 
-    Object.assign(school, updates);
+    // Check for duplicates (excluding current school)
+    const duplicate = masterData.schools.find(
+      (s) => s._id.toString() !== id && (s.code === code || s.name === name),
+    );
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message: "School with this name or code already exists.",
+      });
+    }
+
+    school.name = name;
+    school.code = code;
     await masterData.save();
 
     logger.info("school_updated", {
       schoolId: id,
+      name,
+      code,
       updatedBy: req.user._id,
     });
 
@@ -1313,42 +1508,51 @@ export async function updateSchool(req, res) {
       data: school,
     });
   } catch (error) {
-    res.status(400).json({
+    logger.error("update_school_error", {
+      error: error.message,
+    });
+
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error updating school.",
     });
   }
 }
 
+/**
+ * Create department
+ */
 export async function createDepartment(req, res) {
   try {
-    const { name, code, school, specializations } = req.body;
+    const { name, code, school } = req.body;
 
-    const masterData = await MasterData.findOne();
-    if (!masterData) {
+    const masterData = await getOrCreateMasterData();
+
+    // Check if school exists
+    const schoolExists = masterData.schools.find((s) => s.code === school);
+
+    if (!schoolExists) {
       return res.status(404).json({
         success: false,
-        message: "Master data not initialized.",
+        message: "School not found. Please create the school first.",
       });
     }
 
-    // Check duplicate code
-    const exists = masterData.departments.find((d) => d.code === code);
+    // Check if department already exists
+    const exists = masterData.departments.find(
+      (d) => (d.code === code || d.name === name) && d.school === school,
+    );
+
     if (exists) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
-        message: "Department code already exists.",
+        message:
+          "Department with this name or code already exists in this school.",
       });
     }
 
-    masterData.departments.push({
-      name,
-      code,
-      school,
-      specializations: specializations || [],
-      isActive: true,
-    });
-
+    // Add department
+    masterData.departments.push({ name, code, school });
     await masterData.save();
 
     logger.info("department_created", {
@@ -1361,30 +1565,32 @@ export async function createDepartment(req, res) {
     res.status(201).json({
       success: true,
       message: "Department created successfully.",
-      data: masterData.departments[masterData.departments.length - 1],
+      data: { name, code, school },
     });
   } catch (error) {
-    res.status(400).json({
+    logger.error("create_department_error", {
+      error: error.message,
+    });
+
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error creating department.",
     });
   }
 }
 
+/**
+ * Update department
+ */
 export async function updateDepartment(req, res) {
   try {
     const { id } = req.params;
-    const updates = req.body;
+    const { name, code, school } = req.body;
 
-    const masterData = await MasterData.findOne();
-    if (!masterData) {
-      return res.status(404).json({
-        success: false,
-        message: "Master data not found.",
-      });
-    }
+    const masterData = await getOrCreateMasterData();
 
     const department = masterData.departments.id(id);
+
     if (!department) {
       return res.status(404).json({
         success: false,
@@ -1392,11 +1598,42 @@ export async function updateDepartment(req, res) {
       });
     }
 
-    Object.assign(department, updates);
+    // Check if school exists
+    const schoolExists = masterData.schools.find((s) => s.code === school);
+
+    if (!schoolExists) {
+      return res.status(404).json({
+        success: false,
+        message: "School not found.",
+      });
+    }
+
+    // Check for duplicates
+    const duplicate = masterData.departments.find(
+      (d) =>
+        d._id.toString() !== id &&
+        (d.code === code || d.name === name) &&
+        d.school === school,
+    );
+
+    if (duplicate) {
+      return res.status(409).json({
+        success: false,
+        message:
+          "Department with this name or code already exists in this school.",
+      });
+    }
+
+    department.name = name;
+    department.code = code;
+    department.school = school;
     await masterData.save();
 
     logger.info("department_updated", {
       departmentId: id,
+      name,
+      code,
+      school,
       updatedBy: req.user._id,
     });
 
@@ -1406,47 +1643,38 @@ export async function updateDepartment(req, res) {
       data: department,
     });
   } catch (error) {
-    res.status(400).json({
+    logger.error("update_department_error", {
+      error: error.message,
+    });
+
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error updating department.",
     });
   }
 }
 
+/**
+ * Create academic year
+ */
 export async function createAcademicYear(req, res) {
   try {
-    const { year, isActive, isCurrent } = req.body;
+    const { year } = req.body;
 
-    const masterData = await MasterData.findOne();
-    if (!masterData) {
-      return res.status(404).json({
-        success: false,
-        message: "Master data not initialized.",
-      });
-    }
+    const masterData = await getOrCreateMasterData();
 
-    // Check duplicate year
-    const exists = masterData.academicYears.find((y) => y.year === year);
+    // Check if academic year already exists
+    const exists = masterData.academicYears.find((ay) => ay.year === year);
+
     if (exists) {
-      return res.status(400).json({
+      return res.status(409).json({
         success: false,
         message: "Academic year already exists.",
       });
     }
 
-    // If setting as current, unset others
-    if (isCurrent) {
-      masterData.academicYears.forEach((y) => {
-        y.isCurrent = false;
-      });
-    }
-
-    masterData.academicYears.push({
-      year,
-      isActive: isActive !== undefined ? isActive : true,
-      isCurrent: isCurrent || false,
-    });
-
+    // Add academic year
+    masterData.academicYears.push({ year });
     await masterData.save();
 
     logger.info("academic_year_created", {
@@ -1457,12 +1685,16 @@ export async function createAcademicYear(req, res) {
     res.status(201).json({
       success: true,
       message: "Academic year created successfully.",
-      data: masterData.academicYears[masterData.academicYears.length - 1],
+      data: { year },
     });
   } catch (error) {
-    res.status(400).json({
+    logger.error("create_academic_year_error", {
+      error: error.message,
+    });
+
+    res.status(500).json({
       success: false,
-      message: error.message,
+      message: "Error creating academic year.",
     });
   }
 }

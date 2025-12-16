@@ -2,11 +2,11 @@ import dotenv from "dotenv";
 
 import mongoose from "mongoose";
 import bcrypt from "bcryptjs";
-import connectDB from "./db.js";
+import connectDB from "../utils/db.js";
 import Faculty from "../models/facultySchema.js";
 
-if (!process.env.MONGOOSE_CONNECTION_STRING) {
-  console.error("MONGOOSE_CONNECTION_STRING missing. Check .env and path.");
+if (!process.env.MONGO_URI) {
+  console.error("MONGO_URI missing. Check .env and path.");
   process.exit(1);
 }
 
