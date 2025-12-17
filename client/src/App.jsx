@@ -6,7 +6,7 @@ import FacultyDashboard from "./features/faculty/pages/FacultyDashboard";
 import StudentManagement from "./features/admin/pages/StudentManagement";
 import FacultyManagement from "./features/admin/pages/FacultyManagement";
 import ProjectManagement from "./features/admin/pages/ProjectManagement";
-import PanelManagement from "./features/admin/pages/PanelManagement";
+import PanelManagementLanding from "./features/admin/pages/PanelManagementLanding";
 import AdminReports from "./features/admin/pages/AdminReports";
 import AdminSettings from "./features/admin/pages/AdminSettings";
 import RequestManagement from "./features/admin/pages/RequestManagement";
@@ -89,7 +89,7 @@ function AppRoutes() {
         path="/admin/panels"
         element={
           <ProtectedRoute allowedRoles={["admin", "coordinator"]}>
-            <PanelManagement />
+            <PanelManagementLanding />
           </ProtectedRoute>
         }
       />
