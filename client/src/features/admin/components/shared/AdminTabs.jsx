@@ -1,70 +1,78 @@
 // src/features/admin/components/shared/AdminTabs.jsx
-import React from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
-import { 
+import React from "react";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
   UserGroupIcon,
   AcademicCapIcon,
   DocumentTextIcon,
   ChartBarIcon,
   Cog6ToothIcon,
   ClipboardDocumentListIcon,
-  MegaphoneIcon
-} from '@heroicons/react/24/outline';
+  MegaphoneIcon,
+  UsersIcon,
+} from "@heroicons/react/24/outline";
 
 const AdminTabs = () => {
   const navigate = useNavigate();
   const location = useLocation();
 
   const tabs = [
-    { 
-      id: 'students', 
-      label: 'Student Management', 
-      path: '/admin/students',
+    {
+      id: "students",
+      label: "Student Management",
+      path: "/admin/students",
       icon: UserGroupIcon,
-      description: 'View and manage students'
+      description: "View and manage students",
     },
-    { 
-      id: 'faculty', 
-      label: 'Faculty Management', 
-      path: '/admin/faculty',
+    {
+      id: "faculty",
+      label: "Faculty Management",
+      path: "/admin/faculty",
       icon: AcademicCapIcon,
-      description: 'Manage faculty members'
+      description: "Manage faculty members",
     },
-    { 
-      id: 'projects', 
-      label: 'Project Management', 
-      path: '/admin/projects',
+    {
+      id: "projects",
+      label: "Project Management",
+      path: "/admin/projects",
       icon: DocumentTextIcon,
-      description: 'Oversee student projects'
+      description: "Oversee student projects",
     },
-    { 
-      id: 'reports', 
-      label: 'Reports', 
-      path: '/admin/reports',
+    {
+      id: "panels",
+      label: "Panel Management",
+      path: "/admin/panels",
+      icon: UsersIcon,
+      description: "Manage evaluation panels",
+    },
+    {
+      id: "reports",
+      label: "Reports",
+      path: "/admin/reports",
       icon: ChartBarIcon,
-      description: 'Generate reports'
+      description: "Generate reports",
     },
-    { 
-      id: 'requests', 
-      label: 'Request Management', 
-      path: '/admin/requests',
+    {
+      id: "requests",
+      label: "Request Management",
+      path: "/admin/requests",
       icon: ClipboardDocumentListIcon,
-      description: 'Handle requests'
+      description: "Handle requests",
     },
-    { 
-      id: 'broadcasts', 
-      label: 'Broadcasts', 
-      path: '/admin/broadcasts',
+    {
+      id: "broadcasts",
+      label: "Broadcasts",
+      path: "/admin/broadcasts",
       icon: MegaphoneIcon,
-      description: 'Send announcements'
+      description: "Send announcements",
     },
-    { 
-      id: 'settings', 
-      label: 'Settings', 
-      path: '/admin/settings',
+    {
+      id: "settings",
+      label: "Settings",
+      path: "/admin/settings",
       icon: Cog6ToothIcon,
-      description: 'System settings'
-    }
+      description: "System settings",
+    },
   ];
 
   const isActive = (path) => location.pathname === path;
@@ -76,7 +84,7 @@ const AdminTabs = () => {
           {tabs.map((tab) => {
             const Icon = tab.icon;
             const active = isActive(tab.path);
-            
+
             return (
               <button
                 key={tab.id}
@@ -84,9 +92,10 @@ const AdminTabs = () => {
                 className={`
                   flex items-center gap-2 px-4 py-2 rounded-lg font-medium text-sm
                   transition-all duration-200 whitespace-nowrap
-                  ${active 
-                    ? 'bg-blue-600 text-white shadow-md' 
-                    : 'bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow'
+                  ${
+                    active
+                      ? "bg-blue-600 text-white shadow-md"
+                      : "bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow"
                   }
                 `}
                 title={tab.description}
