@@ -176,16 +176,16 @@ router.delete(
  * Panel assignment to projects
  */
 router.post(
-  "/projects/:projectId/assign-panel",
+  "/projects/assign-panel",
   checkCoordinatorPermission("canAssignPanels"),
-  validateRequired(["panelId"]),
+  validateRequired(["projectId", "panelId"]),
   coordinatorController.assignPanel,
 );
 
 router.post(
-  "/projects/:projectId/assign-review-panel",
+  "/projects/assign-review-panel",
   checkCoordinatorPermission("canAssignPanels"),
-  validateRequired(["reviewType", "panelId"]),
+  validateRequired(["projectId", "reviewType", "panelId"]),
   coordinatorController.assignReviewPanel,
 );
 
@@ -199,9 +199,9 @@ router.post(
  * Panel reassignment (update members only)
  */
 router.put(
-  "/projects/:projectId/reassign-panel",
+  "/projects/reassign-panel",
   checkCoordinatorPermission("canReassignPanels"),
-  validateRequired(["panelId", "reason"]),
+  validateRequired(["projectId", "panelId", "reason"]),
   coordinatorController.reassignPanel,
 );
 

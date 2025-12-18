@@ -434,6 +434,7 @@ static async autoCreatePanels(
     academicYear,
     school,
     department,
+    buffer = 0,
     assignedBy = null,
   ) {
     const projects = await Project.find({
@@ -450,44 +451,94 @@ static async autoCreatePanels(
       details: [],
     };
 
+    // 1. Fetch all active panels for this context
+    let allPanels = await Panel.find({
+      academicYear,
+      school,
+      department,
+      isActive: true,
+    })
+      .populate("members.faculty", "employeeId")
+      .lean();
+
+    // 2. Calculate experience score for each panel
+    // Score = Sum of numeric part of employeeIds of members
+    // Lower score = More experienced (as per requirement)
+    allPanels = allPanels.map((panel) => {
+      const score = panel.members.reduce((sum, member) => {
+        const empId = member.faculty?.employeeId || "";
+        const num = parseInt(empId.replace(/\D/g, "") || "0", 10);
+        return sum + num;
+      }, 0);
+      return { ...panel, experienceScore: score };
+    });
+
+    // 3. Sort by experience score (ASC)
+    allPanels.sort((a, b) => a.experienceScore - b.experienceScore);
+
+    // 4. Apply buffer - keep top (N - buffer) panels
+    const activeCount = Math.max(0, allPanels.length - buffer);
+    const activePanels = allPanels.slice(0, activeCount);
+
+    if (activePanels.length === 0) {
+      return {
+        ...results,
+        errors: projects.length,
+        details: [{ error: "No panels available after applying buffer." }],
+      };
+    }
+
     for (const project of projects) {
       try {
-        // Find suitable panel based on specialization
-        const panel = await Panel.findOne({
-          academicYear,
-          school,
-          department,
-          specializations: { $in: [project.specialization] },
-          isActive: true,
-          $expr: { $lt: ["$assignedProjectsCount", "$maxProjects"] },
-        }).sort({ assignedProjectsCount: 1 });
+        // Filter candidates from activePanels
+        // Must have capacity
+        const candidates = activePanels.filter(
+          (p) => p.assignedProjectsCount < p.maxProjects,
+        );
 
-        // If no specialization match, find any available panel
-        const fallbackPanel =
-          panel ||
-          (await Panel.findOne({
-            academicYear,
-            school,
-            department,
-            isActive: true,
-            $expr: { $lt: ["$assignedProjectsCount", "$maxProjects"] },
-          }).sort({ assignedProjectsCount: 1 }));
-
-        if (!fallbackPanel) {
+        if (candidates.length === 0) {
           results.errors++;
           results.details.push({
             projectId: project._id,
             projectName: project.name,
-            error: "No available panel found",
+            error: "No available panel found (capacity full)",
           });
           continue;
         }
 
+        // Find suitable panel based on specialization
+        let suitablePanels = candidates.filter(
+          (p) =>
+            p.specializations &&
+            p.specializations.includes(project.specialization),
+        );
+
+        // If no specialization match, use all candidates (fallback)
+        if (suitablePanels.length === 0) {
+          suitablePanels = candidates;
+        }
+
+        // Sort suitable panels:
+        // 1. assignedProjectsCount ASC (Load balancing)
+        // 2. experienceScore ASC (Prefer experienced for "extra" / tie-breaking)
+        suitablePanels.sort((a, b) => {
+          if (a.assignedProjectsCount !== b.assignedProjectsCount) {
+            return a.assignedProjectsCount - b.assignedProjectsCount;
+          }
+          return a.experienceScore - b.experienceScore;
+        });
+
+        const bestPanel = suitablePanels[0];
+
         await this.assignPanelToProject(
-          fallbackPanel._id,
+          bestPanel._id,
           project._id,
           assignedBy,
         );
+
+        // Update in-memory count
+        bestPanel.assignedProjectsCount++;
+
         results.projectsAssigned++;
       } catch (error) {
         results.errors++;

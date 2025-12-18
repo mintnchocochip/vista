@@ -1148,9 +1148,9 @@ export async function assignPanel(req, res) {
       });
     }
 
-    const { projectId } = req.params;
-    const { panelId } = req.body;
+    const { projectId, panelId } = req.body;
 
+    // 1. Verify existence and context ownership
     const [project, panel] = await Promise.all([
       Project.findById(projectId),
       Panel.findById(panelId),
@@ -1180,38 +1180,8 @@ export async function assignPanel(req, res) {
       });
     }
 
-    // Validate specialization match
-    if (
-      panel.specializations &&
-      panel.specializations.length > 0 &&
-      !panel.specializations.includes(project.specialization)
-    ) {
-      return res.status(400).json({
-        success: false,
-        message: `Specialization mismatch blocked. Panel specializes in [${panel.specializations.join(", ")}], but project requires ${project.specialization}.`,
-      });
-    }
-
-    // Check max projects per panel
-    const config = await DepartmentConfig.findOne(getCoordinatorContext(req));
-    if (config?.maxProjectsPerPanel) {
-      const projectCount = await Project.countDocuments({ panel: panelId });
-      if (projectCount >= config.maxProjectsPerPanel) {
-        return res.status(400).json({
-          success: false,
-          message: `Panel already has maximum ${config.maxProjectsPerPanel} projects assigned.`,
-        });
-      }
-    }
-
-    project.panel = panelId;
-    await project.save();
-
-    logger.info("panel_assigned_by_coordinator", {
-      projectId,
-      panelId,
-      coordinatorId: req.coordinator._id,
-    });
+    // 2. Use service to perform assignment (handles capacity, counts, etc.)
+    await PanelService.assignPanelToProject(panelId, projectId, req.user._id);
 
     res.status(200).json({
       success: true,
@@ -1234,8 +1204,7 @@ export async function assignReviewPanel(req, res) {
       });
     }
 
-    const { projectId } = req.params;
-    const { reviewType, panelId } = req.body;
+    const { projectId, reviewType, panelId } = req.body;
 
     const [project, panel] = await Promise.all([
       Project.findById(projectId),
@@ -1342,11 +1311,13 @@ export async function autoAssignPanels(req, res) {
     }
 
     const context = getCoordinatorContext(req);
+    const { buffer } = req.body;
 
     const result = await PanelService.autoAssignPanels(
       context.academicYear,
       context.school,
       context.department,
+      buffer || 0,
       req.user._id,
     );
 
@@ -1372,8 +1343,7 @@ export async function reassignPanel(req, res) {
       });
     }
 
-    const { projectId } = req.params;
-    const { panelId, reason } = req.body;
+    const { projectId, panelId, reason } = req.body;
 
     const [project, panel] = await Promise.all([
       Project.findById(projectId),
