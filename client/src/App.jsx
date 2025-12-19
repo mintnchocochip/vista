@@ -12,6 +12,7 @@ import AdminSettings from "./features/admin/pages/AdminSettings";
 import RequestManagement from "./features/admin/pages/RequestManagement";
 import AdminBroadcasts from "./features/admin/pages/AdminBroadcasts";
 import Login from "./features/auth/pages/Login";
+import ForgotPassword from "./features/auth/pages/ForgotPassword";
 import InstructionsPage from "./features/auth/pages/InstructionsPage";
 
 // Protected Route Component
@@ -42,6 +43,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<InstructionsPage />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route
         path="/faculty"
