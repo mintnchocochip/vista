@@ -24,7 +24,7 @@ const StudentManagement = () => {
       // Use dummy data instead
       setLoading(true);
       setTimeout(() => {
-        setStudents(generateDummyStudents());
+        setStudents(generateDummyStudents(filters));
         setLoading(false);
       }, 500);
     }

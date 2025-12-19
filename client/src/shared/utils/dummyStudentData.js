@@ -1,6 +1,6 @@
 // src/shared/utils/dummyStudentData.js
 
-export const generateDummyStudents = () => [
+const allStudents = [
   {
     id: '1',
     name: 'Rajesh Kumar',
@@ -371,3 +371,69 @@ export const generateDummyStudents = () => [
     ]
   }
 ];
+
+// Map filter values to data values
+const schoolMap = {
+  '1': 'SCOPE',
+  '2': 'SENSE',
+  '3': 'SELECT',
+  '4': 'VITBS'
+};
+
+const programmeMap = {
+  '1': 'B.Tech CSE',
+  '2': 'B.Tech IT',
+  '3': 'M.Tech CSE'
+};
+
+const yearMap = {
+  '2025': '2025-26',
+  '2024': '2024-25',
+  '2023': '2023-24'
+};
+
+/**
+ * Generate dummy students filtered by academic context
+ * @param {Object} filters - The academic context filters
+ * @param {string} filters.school - School ID
+ * @param {string} filters.programme - Programme ID
+ * @param {string} filters.year - Year ID
+ * @param {string} filters.semester - Semester ID
+ * @returns {Array} Filtered list of students
+ */
+export const generateDummyStudents = (filters = {}) => {
+  if (!filters || Object.keys(filters).length === 0) {
+    return allStudents;
+  }
+
+  return allStudents.filter(student => {
+    // Filter by school
+    if (filters.school && schoolMap[filters.school]) {
+      if (student.school !== schoolMap[filters.school]) {
+        return false;
+      }
+    }
+
+    // Filter by programme
+    if (filters.programme && programmeMap[filters.programme]) {
+      const expectedProgramme = programmeMap[filters.programme];
+      // Match exact programme or programme that starts with the expected value
+      // This handles cases like "B.Tech CSE" matching "B.Tech CSE (AI&ML)"
+      if (!student.programme.includes(expectedProgramme)) {
+        return false;
+      }
+    }
+
+    // Filter by year
+    if (filters.year && yearMap[filters.year]) {
+      if (student.year !== yearMap[filters.year]) {
+        return false;
+      }
+    }
+
+    // Note: Semester filtering is not implemented in dummy data
+    // All students are assumed to be in the selected semester
+
+    return true;
+  });
+};
