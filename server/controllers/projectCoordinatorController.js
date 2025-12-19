@@ -1181,6 +1181,18 @@ export async function assignPanel(req, res) {
       });
     }
 
+    // Validate specialization match
+    if (
+      panel.specializations &&
+      panel.specializations.length > 0 &&
+      !panel.specializations.includes(project.specialization)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: `Specialization mismatch blocked. Panel specializes in [${panel.specializations.join(", ")}], but project requires ${project.specialization}.`,
+      });
+    }
+
     // 2. Use service to perform assignment (handles capacity, counts, etc.)
     await PanelService.assignPanelToProject(panelId, projectId, req.user._id);
 
@@ -1198,13 +1210,6 @@ export async function assignPanel(req, res) {
 
 export async function assignReviewPanel(req, res) {
   try {
-    if (!req.coordinator.isPrimary) {
-      return res.status(403).json({
-        success: false,
-        message: "Only primary coordinator can assign review panels.",
-      });
-    }
-
     const { projectId, reviewType, panelId } = req.body;
 
     const [project, panel] = await Promise.all([
@@ -1304,13 +1309,6 @@ export async function assignReviewPanel(req, res) {
 
 export async function autoAssignPanels(req, res) {
   try {
-    if (!req.coordinator.isPrimary) {
-      return res.status(403).json({
-        success: false,
-        message: "Only primary coordinator can auto-assign panels.",
-      });
-    }
-
     const context = getCoordinatorContext(req);
     const { buffer } = req.body;
 
@@ -1337,62 +1335,62 @@ export async function autoAssignPanels(req, res) {
 
 export async function reassignPanel(req, res) {
   try {
-    if (!req.coordinator.isPrimary) {
-      return res.status(403).json({
+    const { projectId, panelId, memberEmployeeIds, reason } = req.body;
+    const context = getCoordinatorContext(req);
+
+    if (!projectId) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Project ID is required." });
+    }
+    if (!reason) {
+      return res
+        .status(400)
+        .json({ success: false, message: "Reason is required." });
+    }
+
+    let targetPanelId = panelId;
+
+    // Case 1: Create Temp Panel (Change Faculty)
+    if (memberEmployeeIds && memberEmployeeIds.length > 0) {
+      // Create a new panel
+      const newPanel = await PanelService.createPanel(
+        {
+          memberEmployeeIds,
+          academicYear: context.academicYear,
+          school: context.school,
+          department: context.department,
+          venue: "TBD (Reassignment)",
+          specializations: [], // Temp panel, skip strict specialization
+        },
+        req.user._id,
+      );
+
+      targetPanelId = newPanel._id;
+    }
+    // Case 2: Existing Panel
+    else if (!targetPanelId) {
+      return res.status(400).json({
         success: false,
-        message: "Only primary coordinator can reassign panels.",
+        message:
+          "Either panelId (for existing panel) or memberEmployeeIds (for new panel) must be provided.",
       });
     }
 
-    const { projectId, panelId, reason } = req.body;
-
-    const [project, panel] = await Promise.all([
-      Project.findById(projectId),
-      Panel.findById(panelId),
-    ]);
-
-    if (!project || !panel) {
-      return res.status(404).json({
-        success: false,
-        message: "Project or panel not found.",
-      });
-    }
-
-    if (
-      !verifyContext(project, req.coordinator) ||
-      !verifyContext(panel, req.coordinator)
-    ) {
-      return res.status(403).json({
-        success: false,
-        message: "Project and panel must be in your department.",
-      });
-    }
-
-    const oldPanelId = project.panel;
-
-    project.panel = panelId;
-    project.history = project.history || [];
-    project.history.push({
-      action: "panel_reassigned",
-      previousPanel: oldPanelId,
-      newPanel: panelId,
-      reason,
-      performedBy: req.user._id,
-      performedAt: new Date(),
-    });
-
-    await project.save();
-
-    logger.info("panel_reassigned_by_coordinator", {
+    // Perform reassignment
+    // We skip specialization check for both cases as per requirement
+    await PanelService.reassignProjectToPanel(
       projectId,
-      oldPanel: oldPanelId,
-      newPanel: panelId,
-      coordinatorId: req.coordinator._id,
-    });
+      targetPanelId,
+      reason,
+      req.user._id,
+      true, // skipSpecializationCheck
+    );
 
     res.status(200).json({
       success: true,
       message: "Panel reassigned successfully.",
+      data: { projectId, newPanelId: targetPanelId },
     });
   } catch (error) {
     res.status(400).json({
