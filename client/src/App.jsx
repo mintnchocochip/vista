@@ -11,6 +11,14 @@ import AdminReports from "./features/admin/pages/AdminReports";
 import AdminSettings from "./features/admin/pages/AdminSettings";
 import RequestManagement from "./features/admin/pages/RequestManagement";
 import AdminBroadcasts from "./features/admin/pages/AdminBroadcasts";
+
+// Project Coordinator Pages
+import CoordinatorStudentManagement from "./features/project-coordinator/pages/StudentManagement";
+import CoordinatorFacultyManagement from "./features/project-coordinator/pages/FacultyManagement";
+import CoordinatorProjectManagement from "./features/project-coordinator/pages/ProjectManagement";
+import CoordinatorPanelManagement from "./features/project-coordinator/pages/PanelManagement";
+import CoordinatorRequestManagement from "./features/project-coordinator/pages/RequestManagement";
+
 import Login from "./features/auth/pages/Login";
 import InstructionsPage from "./features/auth/pages/InstructionsPage";
 
@@ -126,6 +134,57 @@ function AppRoutes() {
         element={
           <ProtectedRoute allowedRoles={["admin", "coordinator"]}>
             <AdminBroadcasts />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Project Coordinator Routes */}
+      <Route
+        path="/coordinator"
+        element={<Navigate to="/coordinator/students" replace />}
+      />
+
+      <Route
+        path="/coordinator/students"
+        element={
+          <ProtectedRoute allowedRoles={["project_coordinator"]}>
+            <CoordinatorStudentManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/coordinator/faculty"
+        element={
+          <ProtectedRoute allowedRoles={["project_coordinator"]}>
+            <CoordinatorFacultyManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/coordinator/projects"
+        element={
+          <ProtectedRoute allowedRoles={["project_coordinator"]}>
+            <CoordinatorProjectManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/coordinator/panels"
+        element={
+          <ProtectedRoute allowedRoles={["project_coordinator"]}>
+            <CoordinatorPanelManagement />
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/coordinator/requests"
+        element={
+          <ProtectedRoute allowedRoles={["project_coordinator"]}>
+            <CoordinatorRequestManagement />
           </ProtectedRoute>
         }
       />

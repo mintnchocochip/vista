@@ -1,4 +1,4 @@
-// src/features/admin/components/student-management/StudentList.jsx
+// src/features/project-coordinator/components/student-management/StudentList.jsx
 import React, { useState } from 'react';
 import Card from '../../../../shared/components/Card';
 import Button from '../../../../shared/components/Button';
@@ -15,7 +15,7 @@ import {
   EyeIcon
 } from '@heroicons/react/24/outline';
 
-const StudentList = ({ students = [], loading = false, onViewDetails }) => {
+const StudentList = ({ students = [], loading = false, onViewDetails, isPrimary = false }) => {
   const [searchTerm, setSearchTerm] = useState('');
 
   const filteredStudents = students.filter(student => 
@@ -116,6 +116,20 @@ const StudentList = ({ students = [], loading = false, onViewDetails }) => {
                   </div>
 
                   {/* PPT & Marks */}
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">PPT Approval</p>
+                      {getPPTStatusBadge(student)}
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 mb-1">Total Marks</p>
+                      <p className="text-sm font-semibold text-gray-900">
+                        {student.totalMarks !== null && student.totalMarks !== undefined 
+                          ? `${student.totalMarks}/100` 
+                          : 'Not Graded'}
+                      </p>
+                    </div>
+                  </div>
 
                   {/* Guide & Panel */}
                   <div className="space-y-2">
@@ -161,20 +175,6 @@ const StudentList = ({ students = [], loading = false, onViewDetails }) => {
                   </div>
                 </div>
               )}
-                  <div className="space-y-2">
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">PPT Approval</p>
-                      {getPPTStatusBadge(student)}
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500 mb-1">Total Marks</p>
-                      <p className="text-sm font-semibold text-gray-900">
-                        {student.totalMarks !== null && student.totalMarks !== undefined 
-                          ? `${student.totalMarks}/100` 
-                          : 'Not Graded'}
-                      </p>
-                    </div>
-                  </div>
             </Card>
           ))}
         </div>

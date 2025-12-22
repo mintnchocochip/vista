@@ -1,4 +1,4 @@
-// src/features/admin/components/project-management/ProjectDetailsModal.jsx
+// src/features/project-coordinator/components/project-management/ProjectDetailsModal.jsx
 import React, { useState, useMemo } from 'react';
 import Modal from '../../../../shared/components/Modal';
 import Card from '../../../../shared/components/Card';

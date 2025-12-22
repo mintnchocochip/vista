@@ -1,13 +1,13 @@
 // src/features/admin/components/panel-management/PanelCreationTab.jsx
 import React, { useState, useCallback } from 'react';
 import { CloudArrowUpIcon, DocumentArrowDownIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
-import AcademicFilterSelector from '../student-management/AcademicFilterSelector';
+import FacultyFilters from '../../../project-coordinator/components/faculty-management/FacultyFilters';
 import Card from '../../../../shared/components/Card';
 import Button from '../../../../shared/components/Button';
 import { useToast } from '../../../../shared/hooks/useToast';
 import { downloadFacultyTemplate, validateFacultyFile, parseFacultyExcel } from '../../utils/panelUtils';
 
-const PanelCreationTab = () => {
+const FacultyCreationTab = ({ school = '', programme = '', hideSchoolProgramme = false }) => {
   const [filters, setFilters] = useState(null);
   const [selectedFile, setSelectedFile] = useState(null);
   const [fileError, setFileError] = useState(null);
@@ -103,7 +103,13 @@ const PanelCreationTab = () => {
   return (
     <div className="space-y-6">
       {/* Academic Context Selector */}
-      <AcademicFilterSelector onFilterComplete={handleFilterComplete} />
+      <FacultyFilters 
+        onFilterComplete={handleFilterComplete}
+        onFilterChange={() => {}}
+        school={school}
+        programme={programme}
+        hideSchoolProgramme={hideSchoolProgramme}
+      />
 
       {/* Faculty Upload Section */}
       {filters && (
@@ -288,4 +294,4 @@ const PanelCreationTab = () => {
   );
 };
 
-export default PanelCreationTab;
+export default FacultyCreationTab;

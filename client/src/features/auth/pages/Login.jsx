@@ -42,6 +42,8 @@ const Login = () => {
     
     if (userType === 'faculty') {
       navigate('/faculty');
+    } else if (userType === 'coordinator') {
+      navigate('/coordinator');
     } else {
       navigate('/admin');
     }
@@ -75,6 +77,13 @@ const Login = () => {
               onClick={() => quickLogin('admin')}
             >
               Login as Admin
+            </Button>
+            <Button 
+              variant="secondary" 
+              className="w-full"
+              onClick={() => quickLogin('coordinator')}
+            >
+              Login as Project Coordinator
             </Button>
           </div>
         </div>
