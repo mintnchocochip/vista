@@ -20,6 +20,7 @@ import CoordinatorPanelManagement from "./features/project-coordinator/pages/Pan
 import CoordinatorRequestManagement from "./features/project-coordinator/pages/RequestManagement";
 
 import Login from "./features/auth/pages/Login";
+import ForgotPassword from "./features/auth/pages/ForgotPassword";
 import InstructionsPage from "./features/auth/pages/InstructionsPage";
 
 // Protected Route Component
@@ -50,6 +51,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<InstructionsPage />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
 
       <Route
         path="/faculty"

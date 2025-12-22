@@ -1,9 +1,11 @@
 // src/features/admin/components/panel-management/PanelCreationTab.jsx
 import React, { useState, useCallback } from 'react';
-import { CloudArrowUpIcon, DocumentArrowDownIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
+import { CloudArrowUpIcon, DocumentArrowDownIcon, CheckCircleIcon, ArrowUpTrayIcon } from '@heroicons/react/24/outline';
 import AcademicFilterSelector from '../student-management/AcademicFilterSelector';
 import Card from '../../../../shared/components/Card';
 import Button from '../../../../shared/components/Button';
+import PanelBulkUploadModal from './PanelBulkUploadModal';
+import * as adminApi from '../../services/adminApi';
 import { useToast } from '../../../../shared/hooks/useToast';
 import { downloadFacultyTemplate, validateFacultyFile, parseFacultyExcel } from '../../utils/panelUtils';
 
@@ -14,6 +16,7 @@ const PanelCreationTab = () => {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadedFaculty, setUploadedFaculty] = useState([]);
+  const [isBulkUploadOpen, setIsBulkUploadOpen] = useState(false);
   const { showToast } = useToast();
 
   const handleFilterComplete = useCallback((selectedFilters) => {
@@ -95,6 +98,17 @@ const PanelCreationTab = () => {
     }
   }, [selectedFile, filters, showToast]);
 
+  const handleBulkUpload = useCallback(async (panelData) => {
+    try {
+      await adminApi.createPanel(panelData);
+      showToast('Panel created successfully', 'success');
+      return { success: true };
+    } catch (error) {
+      console.error('Error creating panel:', error);
+      throw error;
+    }
+  }, [showToast]);
+
   const handleRemoveFaculty = useCallback((employeeId) => {
     setUploadedFaculty(prev => prev.filter(f => f.employeeId !== employeeId));
     showToast('Faculty member removed', 'info');
@@ -108,6 +122,14 @@ const PanelCreationTab = () => {
       {/* Faculty Upload Section */}
       {filters && (
         <>
+          {/* Quick Bulk Upload Button */}
+          <div className="flex justify-end mb-4">
+            <Button onClick={() => setIsBulkUploadOpen(true)}>
+              <ArrowUpTrayIcon className="w-4 h-4 mr-2" />
+              Quick Bulk Upload Panels
+            </Button>
+          </div>
+
           {/* Upload Instructions */}
           <Card className="bg-blue-50 border-blue-200">
             <div className="flex items-start space-x-3">
@@ -284,6 +306,13 @@ const PanelCreationTab = () => {
           )}
         </>
       )}
+
+      <PanelBulkUploadModal
+        isOpen={isBulkUploadOpen}
+        onClose={() => setIsBulkUploadOpen(false)}
+        onUpload={handleBulkUpload}
+        filters={filters}
+      />
     </div>
   );
 };

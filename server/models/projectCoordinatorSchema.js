@@ -4,7 +4,6 @@ const permissionSchema = new mongoose.Schema(
   {
     enabled: { type: Boolean, default: true },
     deadline: { type: Date }, // Individual deadline for this coordinator
-    useGlobalDeadline: { type: Boolean, default: true }, // If true, use SystemConfig deadline
   },
   { _id: false },
 );
@@ -23,15 +22,50 @@ const projectCoordinatorSchema = new mongoose.Schema(
     isPrimary: { type: Boolean, default: false },
 
     permissions: {
+      // Basic permissions
       canEdit: permissionSchema,
       canView: permissionSchema,
+
+      // Faculty management
       canCreateFaculty: permissionSchema,
+      canEditFaculty: permissionSchema,
+      canDeleteFaculty: permissionSchema,
+
+      // Panel management
       canCreatePanels: permissionSchema,
+      canEditPanels: permissionSchema,
+      canDeletePanels: permissionSchema,
+      canAssignPanels: permissionSchema,
+      canReassignPanels: permissionSchema,
+
+      // Student management
       canUploadStudents: permissionSchema,
+      canModifyStudents: permissionSchema,
+      canDeleteStudents: permissionSchema,
+
+      // Project management
+      canCreateProjects: permissionSchema,
+      canEditProjects: permissionSchema,
+      canDeleteProjects: permissionSchema,
+
+      // Guide management
       canAssignGuides: permissionSchema,
       canReassignGuides: permissionSchema,
+
+      // Team management
       canMergeTeams: permissionSchema,
+      canSplitTeams: permissionSchema,
+
+      // Schema management
       canEditMarkingSchema: permissionSchema,
+
+      // Request management
+      canManageRequests: permissionSchema,
+
+      // Broadcast management
+      canCreateBroadcasts: permissionSchema,
+      canEditBroadcasts: permissionSchema,
+      canDeleteBroadcasts: permissionSchema,
     },
 
     assignedAt: { type: Date, default: Date.now },
@@ -54,4 +88,5 @@ const ProjectCoordinator = mongoose.model(
   "ProjectCoordinator",
   projectCoordinatorSchema,
 );
+
 export default ProjectCoordinator;

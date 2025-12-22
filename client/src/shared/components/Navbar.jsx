@@ -1,13 +1,16 @@
 // src/shared/components/Navbar.jsx - Light mode
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Button from './Button';
-import { ArrowRightOnRectangleIcon, UserCircleIcon } from '@heroicons/react/24/outline';
+import UserMenu from './UserMenu';
+import ChangePasswordModal from '../../features/auth/components/ChangePasswordModal';
+import { ArrowRightOnRectangleIcon } from '@heroicons/react/24/outline';
 
 const Navbar = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [isChangePasswordOpen, setIsChangePasswordOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -21,7 +24,7 @@ const Navbar = () => {
       <div className="max-w-7xl mx-auto px-4 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-blue-600">
+            <h1 className="vista-brand text-2xl font-bold text-blue-600">
               VISTA
             </h1>
             <p className="text-sm text-gray-600 mt-1">
@@ -30,26 +33,19 @@ const Navbar = () => {
           </div>
           
           <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3 px-4 py-2 bg-gray-50 rounded-xl border border-gray-200">
-              <UserCircleIcon className="w-6 h-6 text-blue-600" />
-              <div className="text-right">
-                <p className="font-semibold text-sm text-gray-900">{user.name}</p>
-                <p className="text-xs text-gray-500">{user.email}</p>
-              </div>
-            </div>
-            
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={handleLogout}
-              className="flex items-center gap-2"
-            >
-              <ArrowRightOnRectangleIcon className="w-4 h-4" />
-              Logout
-            </Button>
+            <UserMenu 
+              user={user} 
+              onChangePassword={() => setIsChangePasswordOpen(true)}
+              onLogout={handleLogout}
+            />
           </div>
         </div>
       </div>
+
+      <ChangePasswordModal
+        isOpen={isChangePasswordOpen}
+        onClose={() => setIsChangePasswordOpen(false)}
+      />
     </div>
   );
 };

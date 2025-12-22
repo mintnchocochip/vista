@@ -7,11 +7,6 @@ const panelMemberSchema = new mongoose.Schema(
       ref: "Faculty",
       required: true,
     },
-    role: {
-      type: String,
-      enum: ["chair", "member"],
-      default: "member",
-    },
     addedAt: { type: Date, default: Date.now },
   },
   { _id: true },
@@ -30,6 +25,12 @@ const panelSchema = new mongoose.Schema(
     department: { type: String, required: true },
 
     specializations: [String],
+
+    type: {
+      type: String,
+      enum: ["regular", "temporary"],
+      default: "regular",
+    },
 
     maxProjects: { type: Number, default: 10 },
     assignedProjectsCount: { type: Number, default: 0 },

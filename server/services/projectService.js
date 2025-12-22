@@ -205,10 +205,15 @@ export class ProjectService {
   }
 
   /**
-   * Get projects by student ID
+   * Get projects by student ID (Reg No)
    */
-  static async getProjectsByStudent(studentId) {
-    return await Project.find({ students: studentId })
+  static async getProjectsByStudent(regNo) {
+    const student = await Student.findOne({ regNo });
+    if (!student) {
+      throw new Error(`Student with Reg No ${regNo} not found.`);
+    }
+
+    return await Project.find({ students: student._id })
       .populate("students", "name regNo emailId")
       .populate("guideFaculty", "name employeeId")
       .populate("panel")
@@ -216,11 +221,16 @@ export class ProjectService {
   }
 
   /**
-   * Get projects by guide faculty ID
+   * Get projects by guide faculty ID (Employee ID)
    */
-  static async getProjectsByGuide(facultyId) {
+  static async getProjectsByGuide(employeeId) {
+    const faculty = await Faculty.findOne({ employeeId });
+    if (!faculty) {
+      throw new Error(`Faculty with Employee ID ${employeeId} not found.`);
+    }
+
     return await Project.find({
-      guideFaculty: facultyId,
+      guideFaculty: faculty._id,
       status: "active",
     })
       .populate("students", "name regNo emailId")
@@ -241,6 +251,60 @@ export class ProjectService {
       .populate("guideFaculty", "name employeeId emailId")
       .populate("panel")
       .lean();
+  }
+
+  /**
+   * Create multiple projects
+   */
+  static async createProjectsBulk(data, createdBy) {
+    let projectsToCreate = [];
+
+    if (Array.isArray(data)) {
+      projectsToCreate = data;
+    } else if (
+      typeof data === "object" &&
+      data !== null &&
+      Array.isArray(data.projects)
+    ) {
+      const { school, department, academicYear, guideFacultyEmpId, projects } =
+        data;
+      projectsToCreate = projects.map((p) => ({
+        ...p,
+        school: p.school || school,
+        department: p.department || department,
+        academicYear: p.academicYear || academicYear,
+        guideFacultyEmpId: p.guideFacultyEmpId || guideFacultyEmpId,
+      }));
+    } else {
+      throw new Error(
+        "Invalid input for bulk creation. Expected array of projects or object with projects array.",
+      );
+    }
+
+    const results = {
+      total: projectsToCreate.length,
+      created: 0,
+      failed: 0,
+      errors: [],
+      projects: [],
+    };
+
+    for (const [index, projectData] of projectsToCreate.entries()) {
+      try {
+        const project = await this.createProject(projectData, createdBy);
+        results.created++;
+        results.projects.push(project);
+      } catch (error) {
+        results.failed++;
+        results.errors.push({
+          index,
+          name: projectData.name,
+          error: error.message,
+        });
+      }
+    }
+
+    return results;
   }
 
   /**
@@ -265,11 +329,13 @@ export class ProjectService {
     }
 
     // Validate specialization match
+    /*
     if (guide.specialization !== specialization) {
       throw new Error(
         `Specialization mismatch. Guide specializes in ${guide.specialization}, but project requires ${specialization}.`,
       );
     }
+    */
 
     // Check team size limits
     const config = await DepartmentConfig.findOne({
@@ -305,29 +371,35 @@ export class ProjectService {
       }
     }
 
-    // Create or update students
+    // Validate and assign students
     const studentIds = [];
     for (const studentData of students) {
-      let student = await Student.findOne({ regNo: studentData.regNo });
+      let regNo;
 
-      if (student) {
-        // Update existing student
-        Object.assign(student, studentData);
-        await student.save();
+      if (typeof studentData === "string") {
+        regNo = studentData;
+      } else if (studentData && studentData.regNo) {
+        regNo = studentData.regNo;
       } else {
-        // Create new student
-        student = new Student({
-          ...studentData,
-          academicYear,
-          school,
-          department,
-        });
-        await student.save();
+        throw new Error("Invalid student data. Expected Reg No.");
+      }
 
-        logger.info("student_created_with_project", {
-          studentId: student._id,
-          regNo: student.regNo,
-        });
+      const student = await Student.findOne({ regNo });
+
+      if (!student) {
+        throw new Error(`Student with Reg No ${regNo} not found.`);
+      }
+
+      // Check if student is already assigned to an active project
+      const existingProject = await Project.findOne({
+        students: student._id,
+        status: "active",
+      });
+
+      if (existingProject) {
+        throw new Error(
+          `Student ${regNo} is already assigned to project '${existingProject.name}'.`,
+        );
       }
 
       studentIds.push(student._id);
@@ -365,114 +437,294 @@ export class ProjectService {
     return project;
   }
 
-  /**
-   * Create multiple projects (bulk)
-   */
-  static async createProjectsBulk(data, createdBy) {
-    const { school, department, academicYear, guideFacultyEmpId, projects } =
-      data;
 
-    const results = {
-      created: 0,
-      errors: 0,
-      errorDetails: [],
-      projectIds: [],
-    };
-
-    for (const projectData of projects) {
-      try {
-        const project = await this.createProject(
-          {
-            ...projectData,
-            school,
-            department,
-            academicYear,
-            guideFacultyEmpId:
-              projectData.guideFacultyEmpId || guideFacultyEmpId,
-          },
-          createdBy,
-        );
-
-        results.created++;
-        results.projectIds.push(project._id);
-      } catch (error) {
-        results.errors++;
-        results.errorDetails.push({
-          projectName: projectData.name,
-          error: error.message,
-        });
-
-        logger.error("bulk_project_creation_error", {
-          projectName: projectData.name,
-          error: error.message,
-        });
-      }
-    }
-
-    return results;
-  }
 
   /**
    * Update project details
    */
-  static async updateProjectDetails(
-    projectId,
-    projectUpdates,
-    studentUpdates,
-    updatedBy,
-  ) {
-    const project = await Project.findById(projectId);
+static async updateProjectDetails(
+  projectId,
+  projectUpdates,
+  studentUpdates,
+  updatedBy,
+) {
+  const project = await Project.findById(projectId);
 
-    if (!project) {
-      throw new Error("Project not found.");
-    }
+  if (!project) {
+    throw new Error("Project not found.");
+  }
 
-    // Update project fields
-    if (projectUpdates) {
-      Object.assign(project, projectUpdates);
+  // ---------- Extract special update fields ----------
+  const addStudents = projectUpdates?.addStudents || [];
+  const removeStudents = projectUpdates?.removeStudents || [];
 
-      project.history = project.history || [];
+  const guideFacultyEmpId = projectUpdates?.guideFacultyEmpId;
+  const panelId = projectUpdates?.panelId;
+  const reviewPanelsUpdates = projectUpdates?.reviewPanelsUpdates || [];
+
+  // Remove helper keys so they don't get blindly assigned to project doc
+  if (projectUpdates) {
+    delete projectUpdates.addStudents;
+    delete projectUpdates.removeStudents;
+    delete projectUpdates.guideFacultyEmpId;
+    delete projectUpdates.panelId;
+    delete projectUpdates.reviewPanelsUpdates;
+  }
+
+  // ---------- Update project scalar fields ----------
+  if (projectUpdates && Object.keys(projectUpdates).length > 0) {
+    Object.assign(project, projectUpdates);
+
+    project.history = project.history || [];
+    project.history.push({
+      action: "updated",
+      changes: Object.keys(projectUpdates),
+      performedBy: updatedBy,
+      performedAt: new Date(),
+    });
+  }
+
+  // Ensure arrays exist
+  project.students = project.students || [];
+  project.history = project.history || [];
+  project.reviewPanels = project.reviewPanels || [];
+
+  // ---------- Remove students from project ----------
+  if (Array.isArray(removeStudents) && removeStudents.length > 0) {
+    const studentsToRemove = await Student.find({
+      regNo: { $in: removeStudents },
+    }).select("_id regNo");
+
+    const removeIds = new Set(studentsToRemove.map((s) => s._id.toString()));
+
+    project.students = project.students.filter(
+      (sid) => !removeIds.has(sid.toString()),
+    );
+
+    if (studentsToRemove.length > 0) {
       project.history.push({
-        action: "updated",
-        changes: Object.keys(projectUpdates),
+        action: "team_merged", // or another action name if you prefer
+        changes: ["removeStudents"],
+        removedRegNos: studentsToRemove.map((s) => s.regNo),
         performedBy: updatedBy,
         performedAt: new Date(),
       });
     }
+  }
 
-    await project.save();
+  // ---------- Add students to project ----------
+  let addedStudentsCount = 0;
+  if (Array.isArray(addStudents) && addStudents.length > 0) {
+    const regNos = addStudents.map((s) =>
+      typeof s === "string" ? s : s.regNo,
+    );
 
-    // Update students
-    let updatedStudents = 0;
-    if (studentUpdates && Array.isArray(studentUpdates)) {
-      for (const studentData of studentUpdates) {
-        const student = await Student.findOne({ regNo: studentData.regNo });
+    const existingStudents = await Student.find({
+      regNo: { $in: regNos },
+    });
 
-        if (student) {
-          Object.assign(student, studentData);
-          await student.save();
-          updatedStudents++;
+    const existingByRegNo = new Map(
+      existingStudents.map((s) => [s.regNo, s]),
+    );
 
-          logger.info("student_updated_with_project", {
-            studentId: student._id,
-            regNo: student.regNo,
-            projectId,
-          });
-        }
+    for (const item of addStudents) {
+      const regNo = typeof item === "string" ? item : item.regNo;
+      if (!regNo) continue;
+
+      const student = existingByRegNo.get(regNo);
+      if (!student) continue;
+
+      const studentIdStr = student._id.toString();
+      const alreadyInProject = project.students.some(
+        (sid) => sid.toString() === studentIdStr,
+      );
+      if (!alreadyInProject) {
+        project.students.push(student._id);
+        addedStudentsCount++;
+      }
+
+      if (typeof item === "object") {
+        Object.assign(student, item);
+        await student.save();
       }
     }
 
-    logger.info("project_details_updated", {
-      projectId,
-      updatedBy,
-      studentsUpdated: updatedStudents,
+    if (addedStudentsCount > 0) {
+      project.history.push({
+        action: "team_merged",
+        changes: ["addStudents"],
+        addedCount: addedStudentsCount,
+        performedBy: updatedBy,
+        performedAt: new Date(),
+      });
+    }
+  }
+
+  // ---------- Guide reassignment ----------
+  if (guideFacultyEmpId) {
+    const newGuide = await Faculty.findOne({
+      employeeId: guideFacultyEmpId.trim().toUpperCase(),
     });
 
-    return {
-      project,
-      studentsUpdated: updatedStudents,
-    };
+    if (!newGuide) {
+      throw new Error("New guide faculty not found.");
+    }
+
+    // Ensure same academic context
+    if (
+      newGuide.school !== project.school ||
+      newGuide.department !== project.department
+    ) {
+      throw new Error(
+        "Guide must belong to the same school and department as the project.",
+      );
+    }
+
+    const previousGuide = project.guideFaculty;
+
+    if (
+      !previousGuide ||
+      previousGuide.toString() !== newGuide._id.toString()
+    ) {
+      project.history.push({
+        action: "guide_reassigned",
+        previousGuideFaculty: previousGuide || null,
+        newGuideFaculty: newGuide._id,
+        performedBy: updatedBy,
+        performedAt: new Date(),
+      });
+
+      project.guideFaculty = newGuide._id;
+    }
   }
+
+  // ---------- Main panel reassignment ----------
+  if (panelId) {
+    const newPanel = await Panel.findById(panelId);
+
+    if (!newPanel) {
+      throw new Error("Panel not found.");
+    }
+
+    // Ensure same academic context
+    if (
+      newPanel.academicYear !== project.academicYear ||
+      newPanel.school !== project.school ||
+      newPanel.department !== project.department
+    ) {
+      throw new Error(
+        "Panel must belong to the same academic context as the project.",
+      );
+    }
+
+    const previousPanel = project.panel;
+
+    if (!previousPanel || previousPanel.toString() !== newPanel._id.toString()) {
+      project.history.push({
+        action: "panel_reassigned",
+        previousPanel: previousPanel || null,
+        newPanel: newPanel._id,
+        performedBy: updatedBy,
+        performedAt: new Date(),
+      });
+
+      project.panel = newPanel._id;
+    }
+  }
+
+  // ---------- Review-specific panel assignments ----------
+  if (Array.isArray(reviewPanelsUpdates) && reviewPanelsUpdates.length > 0) {
+    for (const update of reviewPanelsUpdates) {
+      const { reviewType, panelId: reviewPanelId } = update;
+      if (!reviewType || !reviewPanelId) continue;
+
+      const newPanel = await Panel.findById(reviewPanelId);
+      if (!newPanel) {
+        throw new Error(
+          `Panel not found for reviewType '${reviewType}'.`,
+        );
+      }
+
+      if (
+        newPanel.academicYear !== project.academicYear ||
+        newPanel.school !== project.school ||
+        newPanel.department !== project.department
+      ) {
+        throw new Error(
+          `Review panel for '${reviewType}' must be in same academic context as project.`,
+        );
+      }
+
+      const existingIndex = project.reviewPanels.findIndex(
+        (rp) => rp.reviewType === reviewType,
+      );
+
+      let previousPanel = null;
+
+      if (existingIndex >= 0) {
+        previousPanel = project.reviewPanels[existingIndex].panel;
+        project.reviewPanels[existingIndex].panel = newPanel._id;
+        project.reviewPanels[existingIndex].assignedAt = new Date();
+        project.reviewPanels[existingIndex].assignedBy = updatedBy;
+      } else {
+        project.reviewPanels.push({
+          reviewType,
+          panel: newPanel._id,
+          assignedAt: new Date(),
+          assignedBy: updatedBy,
+        });
+      }
+
+      project.history.push({
+        action: "review_panel_assigned",
+        reviewType,
+        previousPanel: previousPanel || null,
+        newPanel: newPanel._id,
+        performedBy: updatedBy,
+        performedAt: new Date(),
+      });
+    }
+  }
+
+  // ---------- Keep teamSize in sync ----------
+  project.teamSize = project.students.length;
+
+  await project.save();
+
+  // ---------- Update existing student profiles ----------
+  let updatedStudents = 0;
+  if (studentUpdates && Array.isArray(studentUpdates)) {
+    for (const studentData of studentUpdates) {
+      const student = await Student.findOne({ regNo: studentData.regNo });
+
+      if (student) {
+        Object.assign(student, studentData);
+        await student.save();
+        updatedStudents++;
+
+        logger.info("student_updated_with_project", {
+          studentId: student._id,
+          regNo: student.regNo,
+          projectId,
+        });
+      }
+    }
+  }
+
+  logger.info("project_details_updated", {
+    projectId,
+    updatedBy,
+    studentsUpdated: updatedStudents,
+    studentsAdded: addedStudentsCount,
+  });
+
+  return {
+    project,
+    studentsUpdated: updatedStudents,
+    studentsAdded: addedStudentsCount,
+  };
+}
+
 
   /**
    * Delete project
