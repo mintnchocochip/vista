@@ -1,6 +1,7 @@
 // src/shared/hooks/useAuth.jsx
 import React, { useState, useEffect, createContext, useContext } from 'react';
 import { MOCK_USERS } from '../utils/mockData';
+import { loginUser, getCurrentUser } from '../../features/auth/services/authService';
 
 const AuthContext = createContext(null);
 
@@ -28,28 +29,38 @@ export const AuthProvider = ({ children }) => {
 
   const fetchUserData = async (token) => {
     try {
-      // TODO: Replace with actual API call
-      // For now, use mock data
+      // Handle mock tokens
       if (token.startsWith('mock-token')) {
         const userType = token.replace('mock-token-', '');
         setUser(MOCK_USERS[userType]);
+        return;
       }
+
+      // Real API call
+      const userData = await getCurrentUser();
+      setUser(userData);
     } catch (err) {
+      console.error('Failed to fetch user data:', err);
       localStorage.removeItem('authToken');
       localStorage.removeItem('mockUser');
+      setUser(null);
     } finally {
       setLoading(false);
     }
   };
 
   const login = async (credentials) => {
-    // TODO: Replace with actual API call
-    // Mock login for development
-    const mockUser = MOCK_USERS.faculty;
-    localStorage.setItem('authToken', 'mock-token-faculty');
-    localStorage.setItem('mockUser', JSON.stringify(mockUser));
-    setUser(mockUser);
-    return { user: mockUser, token: 'mock-token-faculty' };
+    try {
+      const { user, token } = await loginUser(credentials);
+      localStorage.setItem('authToken', token);
+      // We don't store user in localStorage for real auth, we rely on state/fetching
+      // But for consistency with how the app might be using it elsewhere or for persistence across reloads without refetching immediately (optional)
+      // For now, let's just set state.
+      setUser(user);
+      return { user, token };
+    } catch (error) {
+      throw error;
+    }
   };
 
   const logout = () => {
