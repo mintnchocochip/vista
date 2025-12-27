@@ -18,19 +18,30 @@ import {
   XMarkIcon
 } from '@heroicons/react/24/outline';
 import api from '../../../../services/api';
+import {
+  getFacultyList as apiFetchFacultyList,
+  getGuideProjects,
+  getPanelProjects,
+  getPanels,
+  batchReassignGuide,
+  batchReassignPanel,
+  batchAssignFacultyAsPanel
+} from '../../../../services/modificationApi';
 
 const ModificationSettings = () => {
   // Academic context state
   const [academicContext, setAcademicContext] = useState({
     school: '',
     program: '',
-    academicYear: ''
+    academicYear: '',
+    semester: ''
   });
   
   const [contextOptions, setContextOptions] = useState({
     schools: [],
     programs: [],
-    academicYears: []
+    academicYears: [],
+    semesters: ['1', '2']
   });
 
   // Faculty selection state
@@ -89,7 +100,8 @@ const ModificationSettings = () => {
           { value: '2025-26 Winter', label: '2025-26 Winter' },
           { value: '2024-25 Fall', label: '2024-25 Fall' },
           { value: '2024-25 Winter', label: '2024-25 Winter' }
-        ]
+        ],
+        semesters: ['1', '2']
       });
     } catch (error) {
       console.error('Error fetching context options:', error);
@@ -101,7 +113,7 @@ const ModificationSettings = () => {
 
   // Fetch faculty list when context is complete
   useEffect(() => {
-    if (academicContext.school && academicContext.program && academicContext.academicYear) {
+    if (academicContext.school && academicContext.program && academicContext.academicYear && academicContext.semester) {
       fetchFacultyList();
     }
   }, [academicContext]);
@@ -109,20 +121,48 @@ const ModificationSettings = () => {
   const fetchFacultyList = async () => {
     setLoading(prev => ({ ...prev, faculty: true }));
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get('/admin/faculty', { params: academicContext });
+      const response = await apiFetchFacultyList(
+        academicContext.school,
+        academicContext.program,
+        academicContext.academicYear
+      );
       
-      // Dummy data for now
-      setFacultyList([
-        { employeeId: 'FAC001', name: 'Dr. John Smith', email: 'john.smith@university.edu', guideCount: 5, panelCount: 3 },
-        { employeeId: 'FAC002', name: 'Dr. Jane Doe', email: 'jane.doe@university.edu', guideCount: 4, panelCount: 5 },
-        { employeeId: 'FAC003', name: 'Prof. Robert Wilson', email: 'robert.wilson@university.edu', guideCount: 6, panelCount: 2 },
-        { employeeId: 'FAC004', name: 'Dr. Emily Brown', email: 'emily.brown@university.edu', guideCount: 3, panelCount: 4 },
-        { employeeId: 'FAC005', name: 'Prof. Michael Chen', email: 'michael.chen@university.edu', guideCount: 7, panelCount: 6 }
-      ]);
+      // Transform faculty data with project counts
+      const facultyWithCounts = await Promise.all(
+        response.data.map(async (faculty) => {
+          try {
+            // Get guide projects count
+            const guideProjectsResponse = await getGuideProjects(
+              academicContext.academicYear,
+              academicContext.school,
+              academicContext.program,
+              faculty.employeeId
+            );
+            
+            // Get panel projects count (if needed)
+            // Note: This might need adjustment based on your backend
+            const guideCount = guideProjectsResponse.data?.length || 0;
+            
+            return {
+              ...faculty,
+              guideCount,
+              panelCount: 0 // Will be calculated separately if needed
+            };
+          } catch (err) {
+            console.error(`Error fetching counts for ${faculty.employeeId}:`, err);
+            return {
+              ...faculty,
+              guideCount: 0,
+              panelCount: 0
+            };
+          }
+        })
+      );
+      
+      setFacultyList(facultyWithCounts);
     } catch (error) {
       console.error('Error fetching faculty:', error);
-      setMessage({ type: 'error', text: 'Failed to load faculty list' });
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to load faculty list' });
     } finally {
       setLoading(prev => ({ ...prev, faculty: false }));
     }
@@ -142,24 +182,48 @@ const ModificationSettings = () => {
     setSelectedProjects([]);
     
     try {
-      // TODO: Replace with actual API calls
-      // const guideResponse = await api.get(`/projects/guide/${selectedFaculty.employeeId}`);
-      // const panelResponse = await api.get(`/projects/panel/${selectedFaculty.employeeId}`);
+      // Fetch guide projects
+      const guideResponse = await getGuideProjects(
+        academicContext.academicYear,
+        academicContext.school,
+        academicContext.program,
+        selectedFaculty.employeeId
+      );
       
-      // Dummy data for now
-      setGuideProjects([
-        { _id: 'p1', name: 'AI-Based Traffic Management', students: ['John Doe', 'Jane Smith'], status: 'active', specialization: 'Machine Learning' },
-        { _id: 'p2', name: 'Smart Home Automation', students: ['Mike Wilson', 'Sarah Brown'], status: 'active', specialization: 'IoT' },
-        { _id: 'p3', name: 'Blockchain Voting System', students: ['Alex Johnson'], status: 'active', specialization: 'Blockchain' }
-      ]);
+      // Fetch panel projects
+      const panelResponse = await getPanelProjects(selectedFaculty._id);
       
-      setPanelProjects([
-        { _id: 'p4', name: 'Cloud Resource Optimizer', students: ['Tom Hardy', 'Lisa Ray'], status: 'active', specialization: 'Cloud Computing', panelName: 'Panel A' },
-        { _id: 'p5', name: 'NLP Chatbot Platform', students: ['Chris Evans'], status: 'active', specialization: 'NLP', panelName: 'Panel B' }
-      ]);
+      // Transform guide projects
+      const guideProjs = (guideResponse.data || []).map(project => ({
+        _id: project._id,
+        name: project.name,
+        students: project.students?.map(s => s.name) || [],
+        status: project.status,
+        specialization: project.specialization
+      }));
+      
+      // Transform panel projects
+      const panelProjs = [];
+      if (panelResponse.data) {
+        panelResponse.data.forEach(panelGroup => {
+          panelGroup.projects?.forEach(project => {
+            panelProjs.push({
+              _id: project._id,
+              name: project.name,
+              students: project.students?.map(s => s.name) || [],
+              status: project.status,
+              specialization: project.specialization,
+              panelName: panelGroup.panelName || 'Unnamed Panel'
+            });
+          });
+        });
+      }
+      
+      setGuideProjects(guideProjs);
+      setPanelProjects(panelProjs);
     } catch (error) {
       console.error('Error fetching projects:', error);
-      setMessage({ type: 'error', text: 'Failed to load projects' });
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to load projects' });
     } finally {
       setLoading(prev => ({ ...prev, projects: false }));
     }
@@ -168,17 +232,22 @@ const ModificationSettings = () => {
   // Fetch available panels for reassignment
   const fetchAvailablePanels = async () => {
     try {
-      // TODO: Replace with actual API call
-      // const response = await api.get('/admin/panels', { params: academicContext });
+      const response = await getPanels(
+        academicContext.academicYear,
+        academicContext.school,
+        academicContext.program
+      );
       
-      // Dummy data
-      setAvailablePanels([
-        { _id: 'panel1', name: 'Panel A', members: ['Dr. John Smith', 'Dr. Jane Doe'] },
-        { _id: 'panel2', name: 'Panel B', members: ['Prof. Robert Wilson', 'Dr. Emily Brown'] },
-        { _id: 'panel3', name: 'Panel C', members: ['Prof. Michael Chen', 'Dr. Sarah Lee'] }
-      ]);
+      const panels = (response.data || []).map(panel => ({
+        _id: panel._id,
+        name: panel.panelName || `Panel ${panel._id.slice(-4)}`,
+        members: panel.members?.map(m => m.faculty?.name || 'Unknown') || []
+      }));
+      
+      setAvailablePanels(panels);
     } catch (error) {
       console.error('Error fetching panels:', error);
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to load panels' });
     }
   };
 
@@ -209,52 +278,59 @@ const ModificationSettings = () => {
   };
 
   // Open reassign modal
-  const openReassignModal = (mode) => {
-    if (selectedProjects.length === 0) {
-      setMessage({ type: 'error', text: 'Please select at least one project to reassign' });
-      return;
-    }
-    
+  const openReassignModal = async (mode) => {
     setReassignMode(mode);
     if (mode === 'panel') {
-      fetchAvailablePanels();
+      await fetchAvailablePanels();
     }
     setShowReassignModal(true);
   };
 
-  // Handle reassignment
-  const handleReassign = async () => {
-    if (reassignMode === 'guide' && !targetFaculty) {
-      setMessage({ type: 'error', text: 'Please select a target faculty' });
-      return;
-    }
-    if (reassignMode === 'panel' && !targetPanel && !targetFaculty) {
-      setMessage({ type: 'error', text: 'Please select a target panel or faculty' });
-      return;
-    }
-
-    setLoading(prev => ({ ...prev, reassigning: true }));
-    
+  // Handle batch reassignment
+  const handleBatchReassign = async () => {
     try {
-      // TODO: Replace with actual API calls
-      // For each selected project, call the appropriate reassign API
-      // await Promise.all(selectedProjects.map(project => 
-      //   reassignMode === 'guide' 
-      //     ? api.put(`/projects/${project.id}/reassign-guide`, { guideFacultyEmpId: targetFaculty.employeeId })
-      //     : api.post('/panels/assign', { projectId: project.id, panelId: targetPanel._id })
-      // ));
-
-      // Simulate success
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const projectIds = selectedProjects.map(p => p.id);
+      let results;
+      
+      if (reassignMode === 'guide') {
+        // Batch reassign guide
+        results = await batchReassignGuide(projectIds, targetFaculty.employeeId);
+      } else {
+        // Panel reassignment
+        if (panelAssignType === 'existing') {
+          // Assign to existing panel
+          results = await batchReassignPanel(projectIds, targetPanel._id);
+        } else {
+          // Create temporary panels with single faculty
+          results = await batchAssignFacultyAsPanel(
+            projectIds,
+            targetFaculty.employeeId,
+            academicContext.academicYear,
+            academicContext.school,
+            academicContext.program
+          );
+        }
+      }
+      
+      // Count successes and failures
+      const successCount = results.filter(r => r.status === 'fulfilled').length;
+      const failureCount = results.filter(r => r.status === 'rejected').length;
       
       const targetName = reassignMode === 'guide' 
         ? targetFaculty.name 
         : (panelAssignType === 'existing' ? targetPanel?.name : targetFaculty?.name);
       
-      setMessage({ 
-        type: 'success', 
-        text: `Successfully reassigned ${selectedProjects.length} project(s) to ${targetName}` 
-      });
+      if (failureCount === 0) {
+        setMessage({ 
+          type: 'success', 
+          text: `Successfully reassigned ${successCount} project(s) to ${targetName}` 
+        });
+      } else {
+        setMessage({ 
+          type: 'error', 
+          text: `Reassigned ${successCount} project(s), ${failureCount} failed` 
+        });
+      }
       
       // Reset states
       setSelectedProjects([]);
@@ -264,12 +340,10 @@ const ModificationSettings = () => {
       setPanelAssignType('existing');
       
       // Refresh projects
-      fetchFacultyProjects();
+      await fetchFacultyProjects();
     } catch (error) {
       console.error('Error reassigning projects:', error);
-      setMessage({ type: 'error', text: 'Failed to reassign projects' });
-    } finally {
-      setLoading(prev => ({ ...prev, reassigning: false }));
+      setMessage({ type: 'error', text: error.response?.data?.message || 'Failed to reassign projects' });
     }
   };
 
@@ -309,7 +383,7 @@ const ModificationSettings = () => {
             Academic Context
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <Select
               label="School"
               options={contextOptions.schools}
@@ -328,11 +402,19 @@ const ModificationSettings = () => {
             />
             
             <Select
-              label="Academic Year & Semester"
+              label="Academic Year"
               options={contextOptions.academicYears}
               value={academicContext.academicYear}
               onChange={(value) => setAcademicContext(prev => ({ ...prev, academicYear: value }))}
-              placeholder="Select year & semester..."
+              placeholder="Select year..."
+            />
+            
+            <Select
+              label="Semester"
+              options={contextOptions.semesters.map(s => ({ label: `Semester ${s}`, value: s }))}
+              value={academicContext.semester}
+              onChange={(value) => setAcademicContext(prev => ({ ...prev, semester: value }))}
+              placeholder="Select semester..."
             />
           </div>
         </div>
@@ -641,7 +723,7 @@ const ModificationSettings = () => {
             </Button>
             <Button 
               size="sm"
-              onClick={handleReassign}
+              onClick={handleBatchReassign}
               disabled={loading.reassigning || (reassignMode === 'guide' ? !targetFaculty : (panelAssignType === 'existing' ? !targetPanel : !targetFaculty))}
             >
               {loading.reassigning ? 'Reassigning...' : 'Confirm Reassignment'}
