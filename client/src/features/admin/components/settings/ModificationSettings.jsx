@@ -33,15 +33,13 @@ const ModificationSettings = () => {
   const [academicContext, setAcademicContext] = useState({
     school: '',
     program: '',
-    academicYear: '',
-    semester: ''
+    academicYear: ''
   });
   
   const [contextOptions, setContextOptions] = useState({
     schools: [],
     programs: [],
-    academicYears: [],
-    semesters: ['1', '2']
+    academicYears: []
   });
 
   // Faculty selection state
@@ -80,10 +78,73 @@ const ModificationSettings = () => {
   const fetchContextOptions = async () => {
     setLoading(prev => ({ ...prev, context: true }));
     try {
-      // TODO: Replace with actual API calls
-      // const response = await api.get('/admin/master-data');
+      // Fetch master data from API
+      const response = await api.get('/admin/master-data');
       
-      // Dummy data for now
+      console.log('Master data response:', response.data);
+      
+      if (response.data?.success && response.data?.data) {
+        const masterData = response.data.data;
+        
+        // Transform schools
+        const schools = (masterData.schools || [])
+          .filter(school => school.isActive !== false)
+          .map(school => ({
+            value: school.code || school.name,
+            label: school.name
+          }));
+        
+        // Transform departments as programs (will be filtered by school later)
+        const allDepartments = (masterData.departments || [])
+          .filter(dept => dept.isActive !== false)
+          .map(dept => ({
+            value: dept.code || dept.name,
+            label: dept.name,
+            school: dept.school
+          }));
+        
+        // Transform academic years
+        const academicYears = (masterData.academicYears || [])
+          .filter(year => year.isActive !== false)
+          .map(year => ({
+            value: year.year,
+            label: year.year
+          }));
+        
+        console.log('Transformed data:', { schools, allDepartments, academicYears });
+        
+        setContextOptions({
+          schools,
+          programs: allDepartments,
+          academicYears
+        });
+      } else {
+        console.warn('Invalid master data response, using fallback');
+        // Fallback to dummy data if API fails
+        setContextOptions({
+          schools: [
+            { value: 'SCOPE', label: 'SCOPE' },
+            { value: 'SENSE', label: 'SENSE' },
+            { value: 'SELECT', label: 'SELECT' }
+          ],
+          programs: [
+            { value: 'CSE', label: 'Computer Science and Engineering', school: 'SCOPE' },
+            { value: 'IT', label: 'Information Technology', school: 'SCOPE' },
+            { value: 'ECE', label: 'Electronics and Communication', school: 'SENSE' }
+          ],
+          academicYears: [
+            { value: '2025-26 Fall', label: '2025-26 Fall' },
+            { value: '2025-26 Winter', label: '2025-26 Winter' },
+            { value: '2024-25 Fall', label: '2024-25 Fall' },
+            { value: '2024-25 Winter', label: '2024-25 Winter' }
+          ]
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching context options:', error);
+      setMessage({ type: 'error', text: 'Failed to load context options' });
+      
+      // Set fallback dummy data
       setContextOptions({
         schools: [
           { value: 'SCOPE', label: 'SCOPE' },
@@ -91,21 +152,17 @@ const ModificationSettings = () => {
           { value: 'SELECT', label: 'SELECT' }
         ],
         programs: [
-          { value: 'CSE', label: 'Computer Science and Engineering' },
-          { value: 'IT', label: 'Information Technology' },
-          { value: 'ECE', label: 'Electronics and Communication' }
+          { value: 'CSE', label: 'Computer Science and Engineering', school: 'SCOPE' },
+          { value: 'IT', label: 'Information Technology', school: 'SCOPE' },
+          { value: 'ECE', label: 'Electronics and Communication', school: 'SENSE' }
         ],
         academicYears: [
           { value: '2025-26 Fall', label: '2025-26 Fall' },
           { value: '2025-26 Winter', label: '2025-26 Winter' },
           { value: '2024-25 Fall', label: '2024-25 Fall' },
           { value: '2024-25 Winter', label: '2024-25 Winter' }
-        ],
-        semesters: ['1', '2']
+        ]
       });
-    } catch (error) {
-      console.error('Error fetching context options:', error);
-      setMessage({ type: 'error', text: 'Failed to load context options' });
     } finally {
       setLoading(prev => ({ ...prev, context: false }));
     }
@@ -113,13 +170,15 @@ const ModificationSettings = () => {
 
   // Fetch faculty list when context is complete
   useEffect(() => {
-    if (academicContext.school && academicContext.program && academicContext.academicYear && academicContext.semester) {
+    if (academicContext.school && academicContext.program && academicContext.academicYear) {
       fetchFacultyList();
     }
   }, [academicContext]);
 
   const fetchFacultyList = async () => {
     setLoading(prev => ({ ...prev, faculty: true }));
+    setFacultyList([]);
+    setSelectedFaculty(null);
     try {
       const response = await apiFetchFacultyList(
         academicContext.school,
@@ -127,37 +186,62 @@ const ModificationSettings = () => {
         academicContext.academicYear
       );
       
+      if (!response.data || response.data.length === 0) {
+        setFacultyList([]);
+        setLoading(prev => ({ ...prev, faculty: false }));
+        return;
+      }
+      
+      // Fetch all guide and panel projects once for counting
+      let allGuideData = [];
+      let allPanelData = [];
+      
+      try {
+        const [guideResponse, panelResponse] = await Promise.all([
+          getGuideProjects(
+            academicContext.academicYear,
+            academicContext.school,
+            academicContext.program
+          ),
+          getPanelProjects(
+            academicContext.academicYear,
+            academicContext.school,
+            academicContext.program
+          )
+        ]);
+        
+        allGuideData = guideResponse.data || [];
+        allPanelData = panelResponse.data || [];
+      } catch (err) {
+        console.error('Error fetching project data:', err);
+      }
+      
       // Transform faculty data with project counts
-      const facultyWithCounts = await Promise.all(
-        response.data.map(async (faculty) => {
-          try {
-            // Get guide projects count
-            const guideProjectsResponse = await getGuideProjects(
-              academicContext.academicYear,
-              academicContext.school,
-              academicContext.program,
-              faculty.employeeId
-            );
-            
-            // Get panel projects count (if needed)
-            // Note: This might need adjustment based on your backend
-            const guideCount = guideProjectsResponse.data?.length || 0;
-            
-            return {
-              ...faculty,
-              guideCount,
-              panelCount: 0 // Will be calculated separately if needed
-            };
-          } catch (err) {
-            console.error(`Error fetching counts for ${faculty.employeeId}:`, err);
-            return {
-              ...faculty,
-              guideCount: 0,
-              panelCount: 0
-            };
+      const facultyWithCounts = response.data.map((faculty) => {
+        // Count guide projects
+        let guideCount = 0;
+        const guideEntry = allGuideData.find(g => g.faculty?.employeeId === faculty.employeeId);
+        if (guideEntry) {
+          guideCount = guideEntry.guidedProjects?.length || 0;
+        }
+        
+        // Count panel projects
+        let panelCount = 0;
+        allPanelData.forEach(panelGroup => {
+          const isMember = panelGroup.members?.some(member => 
+            member.faculty?.employeeId === faculty.employeeId
+          );
+          if (isMember) {
+            panelCount += panelGroup.projects?.length || 0;
           }
-        })
-      );
+        });
+        
+        return {
+          ...faculty,
+          guideCount,
+          panelCount
+        };
+      });
       
       setFacultyList(facultyWithCounts);
     } catch (error) {
@@ -173,6 +257,7 @@ const ModificationSettings = () => {
     if (selectedFaculty) {
       fetchFacultyProjects();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedFaculty]);
 
   const fetchFacultyProjects = async () => {
@@ -182,42 +267,73 @@ const ModificationSettings = () => {
     setSelectedProjects([]);
     
     try {
-      // Fetch guide projects
+      console.log('Fetching projects for faculty:', selectedFaculty.employeeId);
+      
+      // Fetch all guide projects for the academic context
       const guideResponse = await getGuideProjects(
         academicContext.academicYear,
         academicContext.school,
-        academicContext.program,
-        selectedFaculty.employeeId
+        academicContext.program
       );
       
-      // Fetch panel projects
-      const panelResponse = await getPanelProjects(selectedFaculty._id);
+      // Fetch all panel projects for the academic context
+      const panelResponse = await getPanelProjects(
+        academicContext.academicYear,
+        academicContext.school,
+        academicContext.program
+      );
       
-      // Transform guide projects
-      const guideProjs = (guideResponse.data || []).map(project => ({
-        _id: project._id,
-        name: project.name,
-        students: project.students?.map(s => s.name) || [],
-        status: project.status,
-        specialization: project.specialization
-      }));
+      console.log('Guide response:', guideResponse);
+      console.log('Panel response:', panelResponse);
       
-      // Transform panel projects
-      const panelProjs = [];
-      if (panelResponse.data) {
-        panelResponse.data.forEach(panelGroup => {
-          panelGroup.projects?.forEach(project => {
-            panelProjs.push({
-              _id: project._id,
-              name: project.name,
-              students: project.students?.map(s => s.name) || [],
-              status: project.status,
-              specialization: project.specialization,
-              panelName: panelGroup.panelName || 'Unnamed Panel'
+      // Filter guide projects for the selected faculty
+      const guideProjs = [];
+      if (guideResponse.data && Array.isArray(guideResponse.data)) {
+        guideResponse.data.forEach(facultyGroup => {
+          // Check if this faculty group matches the selected faculty
+          if (facultyGroup.faculty?.employeeId === selectedFaculty.employeeId) {
+            console.log('Found matching faculty group for guide:', facultyGroup);
+            facultyGroup.guidedProjects?.forEach(project => {
+              guideProjs.push({
+                _id: project._id,
+                name: project.name,
+                students: project.students?.map(s => s.name || s.regNo) || [],
+                status: project.status,
+                specialization: project.specialization
+              });
             });
-          });
+          }
         });
       }
+      
+      // Filter panel projects for the selected faculty
+      const panelProjs = [];
+      if (panelResponse.data && Array.isArray(panelResponse.data)) {
+        panelResponse.data.forEach(panelGroup => {
+          // Check if the selected faculty is a member of this panel
+          const isMember = panelGroup.members?.some(member => 
+            member.faculty?.employeeId === selectedFaculty.employeeId ||
+            member.faculty?._id === selectedFaculty._id
+          );
+          
+          if (isMember) {
+            console.log('Found matching panel group:', panelGroup);
+            panelGroup.projects?.forEach(project => {
+              panelProjs.push({
+                _id: project._id,
+                name: project.name,
+                students: project.students?.map(s => s.name || s.regNo) || [],
+                status: project.status,
+                specialization: project.specialization,
+                panelName: panelGroup.panelName || `Panel ${panelGroup.panelId?.toString().slice(-4) || 'Unknown'}`
+              });
+            });
+          }
+        });
+      }
+      
+      console.log('Filtered guide projects:', guideProjs);
+      console.log('Filtered panel projects:', panelProjs);
       
       setGuideProjects(guideProjs);
       setPanelProjects(panelProjs);
@@ -352,6 +468,12 @@ const ModificationSettings = () => {
     return facultyList.filter(f => f.employeeId !== selectedFaculty?.employeeId);
   }, [facultyList, selectedFaculty]);
 
+  // Filter programs based on selected school
+  const filteredPrograms = useMemo(() => {
+    if (!academicContext.school) return [];
+    return contextOptions.programs.filter(prog => prog.school === academicContext.school);
+  }, [academicContext.school, contextOptions.programs]);
+
   const isContextComplete = academicContext.school && academicContext.program && academicContext.academicYear;
 
   return (
@@ -383,7 +505,7 @@ const ModificationSettings = () => {
             Academic Context
           </h3>
           
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Select
               label="School"
               options={contextOptions.schools}
@@ -394,7 +516,7 @@ const ModificationSettings = () => {
             
             <Select
               label="Program"
-              options={contextOptions.programs}
+              options={filteredPrograms}
               value={academicContext.program}
               onChange={(value) => setAcademicContext(prev => ({ ...prev, program: value }))}
               placeholder="Select program..."
@@ -407,14 +529,6 @@ const ModificationSettings = () => {
               value={academicContext.academicYear}
               onChange={(value) => setAcademicContext(prev => ({ ...prev, academicYear: value }))}
               placeholder="Select year..."
-            />
-            
-            <Select
-              label="Semester"
-              options={contextOptions.semesters.map(s => ({ label: `Semester ${s}`, value: s }))}
-              value={academicContext.semester}
-              onChange={(value) => setAcademicContext(prev => ({ ...prev, semester: value }))}
-              placeholder="Select semester..."
             />
           </div>
         </div>

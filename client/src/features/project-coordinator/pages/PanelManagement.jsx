@@ -1,10 +1,11 @@
 // src/features/project-coordinator/pages/PanelManagement.jsx
 import React, { useState, useEffect } from 'react';
-import { PlusCircleIcon, EyeIcon } from '@heroicons/react/24/outline';
+import { PlusCircleIcon, EyeIcon, LinkIcon } from '@heroicons/react/24/outline';
 import Navbar from '../../../shared/components/Navbar';
 import CoordinatorTabs from '../components/shared/CoordinatorTabs';
 import PanelViewTab from '../components/panel-management/PanelViewTab';
 import PanelCreation from '../components/panel-management/PanelCreation';
+import ProjectPanelAssignment from '../components/panel-management/ProjectPanelAssignment';
 import Button from '../../../shared/components/Button';
 import Card from '../../../shared/components/Card';
 import { useToast } from '../../../shared/hooks/useToast';
@@ -49,6 +50,13 @@ const PanelManagement = () => {
       icon: PlusCircleIcon,
       description: 'Create new panels',
       enabled: isPrimary // Only primary coordinators can create
+    },
+    {
+      id: 'assign',
+      label: 'Project Assignment',
+      icon: LinkIcon,
+      description: 'Assign projects to panels',
+      enabled: isPrimary // Only primary coordinators can assign
     }
   ];
 
@@ -102,6 +110,7 @@ const PanelManagement = () => {
                 </button>
               );
             })}
+          {activeTab === 'assign' && isPrimary && <ProjectPanelAssignment />}
           </div>
         </div>
 

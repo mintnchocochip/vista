@@ -6,7 +6,9 @@ import {
   CheckCircleIcon,
   ExclamationCircleIcon,
   TrashIcon,
-  PlusIcon
+  PlusIcon,
+  ArrowUpTrayIcon,
+  DocumentArrowDownIcon
 } from '@heroicons/react/24/outline';
 import AcademicFilterSelector from '../shared/AcademicFilterSelector';
 import Card from '../../../../shared/components/Card';
@@ -22,6 +24,11 @@ import {
   createPanel as apiCreatePanel,
   bulkCreatePanels as apiBulkCreatePanels
 } from '../../services/coordinatorApi';
+import {
+  downloadFacultyTemplate,
+  parseFacultyExcel,
+  validateFacultyFile
+} from '../../utils/panelUtils';
 
 const PanelCreation = () => {
   const [filters, setFilters] = useState(null);
@@ -54,6 +61,11 @@ const PanelCreation = () => {
   const [autoSummary, setAutoSummary] = useState(null);
   const [isCreatingAuto, setIsCreatingAuto] = useState(false);
 
+  // Excel upload mode state
+  const [uploadedFile, setUploadedFile] = useState(null);
+  const [uploadedFaculty, setUploadedFaculty] = useState([]);
+  const [isUploadingExcel, setIsUploadingExcel] = useState(false);
+
   const handleFilterComplete = useCallback((selectedFilters) => {
     setFilters(selectedFilters);
     setActiveMode(null);
@@ -74,6 +86,8 @@ const PanelCreation = () => {
       type: 'regular'
     });
     setAutoSummary(null);
+    setUploadedFile(null);
+    setUploadedFaculty([]);
     
     // Fetch available faculty
     fetchAvailableFaculty(selectedFilters);
@@ -399,6 +413,51 @@ const PanelCreation = () => {
   };
 
   // ====================
+  // EXCEL UPLOAD MODE
+  // ====================
+
+  const handleDownloadTemplate = () => {
+    downloadFacultyTemplate();
+    showToast('Template downloaded successfully', 'success');
+  };
+
+  const handleFileSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const validation = validateFacultyFile(file);
+    if (!validation.isValid) {
+      validation.errors.forEach(error => showToast(error, 'error'));
+      return;
+    }
+
+    try {
+      setIsUploadingExcel(true);
+      const facultyData = await parseFacultyExcel(file);
+      setUploadedFile(file);
+      setUploadedFaculty(facultyData);
+      showToast(`Successfully parsed ${facultyData.length} faculty members`, 'success');
+    } catch (error) {
+      showToast(error.message || 'Failed to parse Excel file', 'error');
+      setUploadedFile(null);
+      setUploadedFaculty([]);
+    } finally {
+      setIsUploadingExcel(false);
+    }
+  };
+
+  const handleRemoveFaculty = (employeeId) => {
+    setUploadedFaculty(prev => prev.filter(f => f.employeeId !== employeeId));
+    showToast('Faculty removed from list', 'success');
+  };
+
+  const handleClearUpload = () => {
+    setUploadedFile(null);
+    setUploadedFaculty([]);
+    showToast('Upload cleared', 'success');
+  };
+
+  // ====================
   // RENDER
   // ====================
 
@@ -433,7 +492,7 @@ const PanelCreation = () => {
 
       {/* Mode Selection */}
       {!activeMode ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Manual Creation */}
           <Card
             className="cursor-pointer hover:shadow-lg transition-shadow"
@@ -451,6 +510,28 @@ const PanelCreation = () => {
                 <Button size="sm" variant="primary">
                   <PlusIcon className="h-4 w-4 mr-2" />
                   Create Manually
+                </Button>
+              </div>
+            </div>
+          </Card>
+
+          {/* Excel Upload */}
+          <Card
+            className="cursor-pointer hover:shadow-lg transition-shadow"
+            onClick={() => setActiveMode('excel')}
+          >
+            <div className="flex items-start gap-4">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <ArrowUpTrayIcon className="h-8 w-8 text-purple-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-lg font-semibold text-gray-900 mb-2">Excel Upload</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Upload faculty details via Excel file. Download template, fill in faculty data, and upload.
+                </p>
+                <Button size="sm" variant="secondary">
+                  <ArrowUpTrayIcon className="h-4 w-4 mr-2" />
+                  Upload Excel
                 </Button>
               </div>
             </div>
@@ -629,6 +710,164 @@ const PanelCreation = () => {
                   <CheckCircleIcon className="h-5 w-5 mr-2" />
                   Create {manualPanelsToCreate.reduce((sum, p) => sum + p.panelCount, 0)} Panels
                 </Button>
+              </div>
+            )}
+          </Card>
+        </div>
+      )}
+
+      {/* Excel Upload Mode */}
+      {activeMode === 'excel' && (
+        <div className="space-y-6">
+          <Card>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-semibold text-gray-900">Upload Faculty via Excel</h3>
+              <Button
+                onClick={() => {
+                  setActiveMode(null);
+                  handleClearUpload();
+                }}
+                variant="secondary"
+                size="sm"
+              >
+                Back to Options
+              </Button>
+            </div>
+
+            {/* Instructions and Template Download */}
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+              <h4 className="font-semibold text-blue-900 mb-2">How to Upload Faculty</h4>
+              <ol className="list-decimal list-inside text-sm text-blue-800 space-y-1">
+                <li>Download the Excel template using the button below</li>
+                <li>Fill in faculty details (Employee ID, Name, Email, Department)</li>
+                <li>Save the file and upload it here</li>
+                <li>Review the uploaded faculty list</li>
+                <li>Remove any incorrect entries if needed</li>
+              </ol>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <Button
+                onClick={handleDownloadTemplate}
+                variant="secondary"
+                size="lg"
+                className="w-full"
+              >
+                <DocumentArrowDownIcon className="h-5 w-5 mr-2" />
+                Download Faculty Template
+              </Button>
+
+              <div>
+                <label className="block">
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls"
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    id="faculty-excel-upload"
+                  />
+                  <Button
+                    onClick={() => document.getElementById('faculty-excel-upload').click()}
+                    variant="primary"
+                    size="lg"
+                    loading={isUploadingExcel}
+                    disabled={isUploadingExcel}
+                    className="w-full"
+                  >
+                    <ArrowUpTrayIcon className="h-5 w-5 mr-2" />
+                    {uploadedFile ? 'Change File' : 'Upload Excel File'}
+                  </Button>
+                </label>
+              </div>
+            </div>
+
+            {/* File Info */}
+            {uploadedFile && (
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <CheckCircleIcon className="h-6 w-6 text-green-600" />
+                    <div>
+                      <p className="font-medium text-green-900">{uploadedFile.name}</p>
+                      <p className="text-sm text-green-700">
+                        {uploadedFaculty.length} faculty members parsed successfully
+                      </p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={handleClearUpload}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    Clear
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Uploaded Faculty List */}
+            {uploadedFaculty.length > 0 && (
+              <div className="mt-6">
+                <h4 className="font-semibold text-gray-900 mb-4">
+                  Uploaded Faculty ({uploadedFaculty.length})
+                </h4>
+                <div className="max-h-96 overflow-y-auto border border-gray-200 rounded-lg">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50 sticky top-0">
+                      <tr>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Employee ID
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Name
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Email
+                        </th>
+                        <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                          Department
+                        </th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                          Actions
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {uploadedFaculty.map((faculty) => (
+                        <tr key={faculty.employeeId} className="hover:bg-gray-50">
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {faculty.employeeId}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-900">
+                            {faculty.name}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {faculty.email}
+                          </td>
+                          <td className="px-4 py-3 text-sm text-gray-600">
+                            {faculty.department}
+                          </td>
+                          <td className="px-4 py-3 text-right">
+                            <Button
+                              onClick={() => handleRemoveFaculty(faculty.employeeId)}
+                              variant="secondary"
+                              size="sm"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </Button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+
+                <div className="mt-6 p-4 bg-gray-50 rounded-lg">
+                  <p className="text-sm text-gray-600">
+                    These {uploadedFaculty.length} faculty members are now available for panel creation. 
+                    Go back to options and use Manual or Auto creation modes to create panels with these faculty.
+                  </p>
+                </div>
               </div>
             )}
           </Card>

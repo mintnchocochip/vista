@@ -310,6 +310,30 @@ export const bulkCreatePanels = async (panelsList) => {
   return response.data;
 };
 
+/**
+ * Auto create panels
+ */
+export const autoCreatePanels = async (data) => {
+  const response = await api.post('/coordinator/panels/auto-create', data);
+  return response.data;
+};
+
+/**
+ * Assign panel to project
+ */
+export const assignPanelToProject = async ({ projectId, panelId }) => {
+  const response = await api.post('/coordinator/projects/assign-panel', { projectId, panelId });
+  return response.data;
+};
+
+/**
+ * Auto assign panels to projects
+ */
+export const autoAssignPanels = async (filters) => {
+  const response = await api.post('/coordinator/panels/auto-assign', filters);
+  return response.data;
+};
+
 // ==================== Request Management APIs ====================
 
 /**
@@ -392,6 +416,9 @@ export default {
   fetchPanels,
   createPanel,
   bulkCreatePanels,
+  autoCreatePanels,
+  assignPanelToProject,
+  autoAssignPanels,
   
   // Requests
   fetchRequests,
