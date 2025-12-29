@@ -276,7 +276,7 @@ export async function createAdmin(req, res) {
 
 export async function autoCreatePanels(req, res) {
   try {
-    const { departments, school, academicYear, panelSize } = req.body;
+    const { departments, school, academicYear, panelSize, facultyList } = req.body;
 
     const results = await PanelService.autoCreatePanels(
       departments,
@@ -284,6 +284,7 @@ export async function autoCreatePanels(req, res) {
       academicYear,
       panelSize || 2,
       req.user._id,
+      facultyList,
     );
 
     res.status(200).json({

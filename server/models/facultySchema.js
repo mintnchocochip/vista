@@ -16,7 +16,7 @@ const facultySchema = new mongoose.Schema(
     },
 
     school: { type: String, required: true },
-    department: { type: String, required: true },
+    department: { type: String },
     specialization: { type: String },
 
     // Project coordinator flag

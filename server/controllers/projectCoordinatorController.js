@@ -960,7 +960,7 @@ export async function createPanel(req, res) {
 export async function autoCreatePanels(req, res) {
   try {
     const context = getCoordinatorContext(req);
-    const { panelSize } = req.body;
+    const { panelSize, facultyList } = req.body;
 
     const result = await PanelService.autoCreatePanels(
       context.academicYear,
@@ -968,6 +968,7 @@ export async function autoCreatePanels(req, res) {
       context.department,
       panelSize || null,
       req.user._id,
+      facultyList,
     );
 
     res.status(200).json({
