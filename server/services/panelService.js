@@ -99,8 +99,16 @@ export class PanelService {
       department,
     });
 
+    // Auto-generate panel name if not provided
+    let panelName = data.panelName;
+    if (!panelName) {
+      // "keep the faculties as the panel name"
+      const facultyNames = faculties.map(f => f.name).join(" & ");
+      panelName = facultyNames.length > 50 ? facultyNames.substring(0, 47) + "..." : facultyNames;
+    }
+
     const panel = new Panel({
-      panelName: `Panel-${school}-${department}-${Date.now()}`,
+      panelName,
       members,
       venue: venue || "TBD",
       dateTime: dateTime || null,
