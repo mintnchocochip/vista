@@ -1,0 +1,15 @@
+[
+  {
+    "name": "AI Research Project",
+    "guideEmail": "smith@vista.com",
+    "studentRegNos": ["11AA1111", "11AA1112"],
+    "academicYear": "2025-2026",
+    "school": "SCOPE",
+    "program": "B.Tech",
+    "department": "CSE",
+    "specialization": "AI/ML",
+    "type": "software",
+    "teamSize": 2,
+    "status": "active"
+  }
+]

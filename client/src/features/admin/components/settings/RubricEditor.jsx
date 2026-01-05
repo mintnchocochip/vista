@@ -1,0 +1,390 @@
+// src/features/admin/components/settings/RubricEditor.jsx
+import React, { useState } from 'react';
+import Card from '../../../../shared/components/Card';
+import Button from '../../../../shared/components/Button';
+import Input from '../../../../shared/components/Input';
+import Select from '../../../../shared/components/Select';
+import { PlusIcon, TrashIcon, ArrowLeftIcon } from '@heroicons/react/24/outline';
+
+const RubricEditor = ({ component, onSave, onCancel }) => {
+  const [formData, setFormData] = useState(component || {
+    name: '',
+    category: 'Other',
+    description: '',
+    suggestedWeight: 0,
+    predefinedSubComponents: [],
+    allowCustomSubComponents: true,
+    isActive: true,
+    applicableFor: ['both']
+  });
+
+  const [showSubComponentForm, setShowSubComponentForm] = useState(false);
+  const [editingSubIndex, setEditingSubIndex] = useState(null);
+  const [subComponentData, setSubComponentData] = useState({
+    name: '',
+    description: '',
+    weight: 0
+  });
+
+  const categories = [
+    'Research',
+    'Implementation',
+    'Documentation',
+    'Presentation',
+    'Testing',
+    'Design',
+    'Analysis',
+    'Other'
+  ];
+
+  const handleAddSubComponent = () => {
+    setSubComponentData({ name: '', description: '', weight: 0 });
+    setEditingSubIndex(null);
+    setShowSubComponentForm(true);
+  };
+
+  const handleEditSubComponent = (sub, index) => {
+    setSubComponentData(sub);
+    setEditingSubIndex(index);
+    setShowSubComponentForm(true);
+  };
+
+  const handleSaveSubComponent = () => {
+    if (!subComponentData.name.trim()) {
+      alert('Please enter a sub-component name');
+      return;
+    }
+
+    let updatedSubs;
+    if (editingSubIndex !== null) {
+      updatedSubs = formData.predefinedSubComponents.map((s, i) =>
+        i === editingSubIndex ? subComponentData : s
+      );
+    } else {
+      updatedSubs = [...formData.predefinedSubComponents, subComponentData];
+    }
+
+    setFormData({ ...formData, predefinedSubComponents: updatedSubs });
+    setShowSubComponentForm(false);
+    setSubComponentData({ name: '', description: '', weight: 0 });
+  };
+
+  const handleDeleteSubComponent = (index) => {
+    if (window.confirm('Delete this sub-component?')) {
+      const updated = formData.predefinedSubComponents.filter((_, i) => i !== index);
+      setFormData({ ...formData, predefinedSubComponents: updated });
+    }
+  };
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+
+    if (!formData.name.trim()) {
+      alert('Please enter a component name');
+      return;
+    }
+
+    onSave(formData);
+  };
+
+  const totalWeight = formData.predefinedSubComponents.reduce((sum, s) => sum + (s.weight || 0), 0);
+
+  if (showSubComponentForm) {
+    return (
+      <Card>
+        <div className="p-6">
+          <div className="mb-6">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                setShowSubComponentForm(false);
+                setSubComponentData({ name: '', description: '', weight: 0 });
+              }}
+            >
+              <ArrowLeftIcon className="h-4 w-4 mr-2" />
+              Back to Component
+            </Button>
+          </div>
+
+          <h3 className="text-xl font-semibold text-gray-900 mb-6">
+            {editingSubIndex !== null ? 'Edit Sub-Component' : 'Add Sub-Component'}
+          </h3>
+
+          <div className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Sub-Component Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={subComponentData.name}
+                onChange={(e) => setSubComponentData({ ...subComponentData, name: e.target.value })}
+                placeholder="e.g., Literature Review"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <textarea
+                value={subComponentData.description || ''}
+                onChange={(e) => setSubComponentData({ ...subComponentData, description: e.target.value })}
+                placeholder="Brief description"
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Weight
+              </label>
+              <input
+                type="number"
+                value={subComponentData.weight || ''}
+                onChange={(e) => setSubComponentData({ ...subComponentData, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                min="0"
+                step="0.1"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => {
+                  setShowSubComponentForm(false);
+                  setSubComponentData({ name: '', description: '', weight: 0 });
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="primary"
+                onClick={handleSaveSubComponent}
+              >
+                Save Sub-Component
+              </Button>
+            </div>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <div className="p-6">
+        <div className="mb-6">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={onCancel}
+          >
+            <ArrowLeftIcon className="h-4 w-4 mr-2" />
+            Back to Components
+          </Button>
+        </div>
+
+        <h3 className="text-xl font-semibold text-gray-900 mb-6">
+          {component ? 'Edit Component' : 'Create New Component'}
+        </h3>
+
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Basic Info */}
+          <div className="space-y-6 bg-gray-50 p-6 rounded-lg">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Component Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Problem Definition, Implementation Quality"
+                required
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-lg"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Category <span className="text-red-500">*</span>
+              </label>
+              <Select
+                value={formData.category}
+                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                options={categories.map(cat => ({ value: cat, label: cat }))}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Description
+              </label>
+              <textarea
+                value={formData.description || ''}
+                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                placeholder="Brief description of this component"
+                rows={3}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-base"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Suggested Weight
+              </label>
+              <input
+                type="number"
+                value={formData.suggestedWeight || ''}
+                onChange={(e) => setFormData({ ...formData, suggestedWeight: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                min="0"
+                step="0.1"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+              <p className="text-xs text-gray-500 mt-1">Suggested weightage for this component in marking schema</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Applicable For
+              </label>
+              <Select
+                value={formData.applicableFor[0] || 'both'}
+                onChange={(e) => setFormData({ ...formData, applicableFor: [e.target.value] })}
+                options={[
+                  { value: 'both', label: 'Both Hardware & Software' },
+                  { value: 'hardware', label: 'Hardware Projects Only' },
+                  { value: 'software', label: 'Software Projects Only' }
+                ]}
+              />
+            </div>
+
+            <div className="flex items-center gap-3">
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.allowCustomSubComponents}
+                  onChange={(e) => setFormData({ ...formData, allowCustomSubComponents: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Allow custom sub-components</span>
+              </label>
+
+              <label className="flex items-center">
+                <input
+                  type="checkbox"
+                  checked={formData.isActive}
+                  onChange={(e) => setFormData({ ...formData, isActive: e.target.checked })}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="ml-2 text-sm text-gray-700">Active</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Sub-Components */}
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h4 className="text-lg font-semibold text-gray-900">
+                  Predefined Sub-Components
+                </h4>
+                <p className="text-sm text-gray-600 mt-1">Optional: Define sub-components for detailed assessment</p>
+              </div>
+              <Button
+                type="button"
+                variant="primary"
+                size="sm"
+                onClick={handleAddSubComponent}
+              >
+                <PlusIcon className="h-4 w-4 mr-2" />
+                Add Sub-Component
+              </Button>
+            </div>
+
+            {formData.predefinedSubComponents.length === 0 ? (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center text-gray-500">
+                <p className="text-lg">No sub-components added yet</p>
+                <p className="text-sm mt-2">Click the button above to add sub-components</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {formData.predefinedSubComponents.map((sub, index) => (
+                  <div
+                    key={index}
+                    className="border border-gray-200 rounded-lg p-5 bg-white hover:shadow-md transition-shadow"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h5 className="font-semibold text-gray-900 text-lg mb-2">
+                          {sub.name}
+                        </h5>
+                        {sub.description && (
+                          <p className="text-sm text-gray-600 mb-2">{sub.description}</p>
+                        )}
+                        {sub.weight > 0 && (
+                          <span className="px-3 py-1 bg-blue-100 text-blue-700 rounded-full font-medium text-sm">
+                            Weight: {sub.weight}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-2 ml-4">
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleEditSubComponent(sub, index)}
+                        >
+                          Edit
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleDeleteSubComponent(index)}
+                          className="text-red-600 hover:bg-red-50"
+                        >
+                          <TrashIcon className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Total Weight Summary */}
+          {formData.predefinedSubComponents.length > 0 && totalWeight > 0 && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border-2 border-blue-200">
+              <div className="flex items-center justify-between">
+                <span className="text-lg font-semibold text-gray-900">Total Sub-Component Weight</span>
+                <span className="text-3xl font-bold text-blue-600">{totalWeight.toFixed(2)}</span>
+              </div>
+            </div>
+          )}
+
+          {/* Actions */}
+          <div className="flex justify-end gap-3 pt-6 border-t border-gray-200">
+            <Button type="button" variant="secondary" onClick={onCancel} size="lg">
+              Cancel
+            </Button>
+            <Button type="submit" variant="primary" size="lg">
+              {component ? 'Update' : 'Create'} Component
+            </Button>
+          </div>
+        </form>
+      </div>
+    </Card>
+  );
+};
+
+export default RubricEditor;

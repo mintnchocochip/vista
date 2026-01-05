@@ -1,0 +1,22 @@
+[
+  {
+    "regNo": "11AA1111",
+    "name": "Student One",
+    "emailId": "student1@vista.com",
+    "school": "SCOPE",
+    "program": "B.Tech",
+    "department": "CSE",
+    "academicYear": "2025-2026",
+    "isActive": true
+  },
+  {
+    "regNo": "11AA1112",
+    "name": "Student Two",
+    "emailId": "student2@vista.com",
+    "school": "SCOPE",
+    "program": "B.Tech",
+    "department": "CSE",
+    "academicYear": "2025-2026",
+    "isActive": true
+  }
+]

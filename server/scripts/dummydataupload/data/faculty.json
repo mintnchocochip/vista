@@ -1,0 +1,51 @@
+[
+  {
+    "name": "Super Admin",
+    "emailId": "admin@vista.com",
+    "employeeId": "A001",
+    "phoneNumber": "9999999999",
+    "password": "password123",
+    "role": "admin",
+    "school": "SCOPE",
+    "department": "CSE",
+    "specialization": "Administration",
+    "isActive": true
+  },
+  {
+    "name": "Project Coordinator",
+    "emailId": "pc@vista.com",
+    "employeeId": "F001",
+    "phoneNumber": "8888888888",
+    "password": "password123",
+    "role": "faculty",
+    "school": "SCOPE",
+    "department": "CSE",
+    "specialization": "Data Science",
+    "isProjectCoordinator": true,
+    "isActive": true
+  },
+  {
+    "name": "Dr. Smith (Guide)",
+    "emailId": "smith@vista.com",
+    "employeeId": "F002",
+    "phoneNumber": "7777777777",
+    "password": "password123",
+    "role": "faculty",
+    "school": "SCOPE",
+    "department": "CSE",
+    "specialization": "AI/ML",
+    "isActive": true
+  },
+  {
+    "name": "Prof. Jones (Panel)",
+    "emailId": "jones@vista.com",
+    "employeeId": "F003",
+    "phoneNumber": "6666666666",
+    "password": "password123",
+    "role": "faculty",
+    "school": "SCOPE",
+    "department": "CSE",
+    "specialization": "Software Engineering",
+    "isActive": true
+  }
+]
