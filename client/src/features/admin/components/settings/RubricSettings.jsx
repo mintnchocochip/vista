@@ -50,7 +50,7 @@ const RubricSettings = ({
   const [selectedContext, setSelectedContext] = useState({
     academicYear: "2024-25",
     school: "SCOPE",
-    program: "CSE",
+    department: "CSE",
   });
 
   // Fetch data when context changes
@@ -65,7 +65,7 @@ const RubricSettings = ({
   }, [
     selectedContext.academicYear,
     selectedContext.school,
-    selectedContext.program,
+    selectedContext.department,
   ]);
 
   const loadData = async () => {
@@ -79,7 +79,7 @@ const RubricSettings = ({
       const response = await getComponentLibrary(
         selectedContext.academicYear,
         selectedContext.school,
-        selectedContext.program
+        selectedContext.department
       );
       setComponentLibrary(response.data);
     } catch (error) {
@@ -96,7 +96,7 @@ const RubricSettings = ({
       const response = await getMarkingSchema(
         selectedContext.academicYear,
         selectedContext.school,
-        selectedContext.program
+        selectedContext.department
       );
       setMarkingSchema(response.data);
     } catch (error) {
@@ -150,7 +150,7 @@ const RubricSettings = ({
       const payload = {
         academicYear: selectedContext.academicYear,
         school: selectedContext.school,
-        program: selectedContext.program,
+        department: selectedContext.department,
         reviews: updatedReviews,
       };
 
@@ -203,7 +203,7 @@ const RubricSettings = ({
         const newLibrary = {
           academicYear: selectedContext.academicYear,
           school: selectedContext.school,
-          program: selectedContext.program,
+          department: selectedContext.department,
           components: [component],
         };
         await createComponentLibrary(newLibrary);
@@ -299,9 +299,9 @@ const RubricSettings = ({
                 Department
               </label>
               <Select
-                value={selectedContext.program}
+                value={selectedContext.department}
                 onChange={(val) =>
-                  setSelectedContext({ ...selectedContext, program: val })
+                  setSelectedContext({ ...selectedContext, department: val })
                 }
                 options={(programs[selectedContext.school] || []).map((p) => ({
                   value: p.code,
@@ -363,65 +363,67 @@ const RubricSettings = ({
               </div>
             ) : (
               <div className="space-y-4">
-                {markingSchema.reviews.map((review, idx) => (
-                  <div
-                    key={idx}
-                    className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all"
-                  >
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <div className="flex items-center gap-3">
-                          <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded">
-                            #{idx + 1}
-                          </span>
-                          <h4 className="font-bold text-gray-900 text-lg">
-                            {review.displayName}
-                          </h4>
-                          <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-0.5 rounded">
-                            {review.reviewName}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
-                          <span>
-                            <strong>By:</strong>{" "}
-                            {review.facultyType.toUpperCase()}
-                          </span>
-                          <span>
-                            {formatDate(review.deadline.from)} -{" "}
-                            {formatDate(review.deadline.to)}
-                          </span>
-                        </div>
-                        <div className="flex gap-2 mt-2">
-                          {review.components.map((c, i) => (
-                            <span
-                              key={i}
-                              className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-700 border border-gray-200"
-                            >
-                              {c.name} ({c.maxMarks})
+                {markingSchema.reviews
+                  .sort((a, b) => a.order - b.order)
+                  .map((review, idx) => (
+                    <div
+                      key={idx}
+                      className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-all"
+                    >
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <div className="flex items-center gap-3">
+                            <span className="bg-blue-100 text-blue-700 text-xs font-bold px-2 py-0.5 rounded">
+                              #{review.order}
                             </span>
-                          ))}
+                            <h4 className="font-bold text-gray-900 text-lg">
+                              {review.displayName}
+                            </h4>
+                            <span className="text-xs text-gray-500 font-mono bg-gray-100 px-2 py-0.5 rounded">
+                              {review.reviewName}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 mt-2 text-sm text-gray-600">
+                            <span>
+                              <strong>By:</strong>{" "}
+                              {review.facultyType.toUpperCase()}
+                            </span>
+                            <span>
+                              {formatDate(review.deadline.from)} -{" "}
+                              {formatDate(review.deadline.to)}
+                            </span>
+                          </div>
+                          <div className="flex gap-2 mt-2">
+                            {review.components.map((c, i) => (
+                              <span
+                                key={i}
+                                className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-700 border border-gray-200"
+                              >
+                                {c.name} ({c.maxMarks})
+                              </span>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleEditReview(review, idx)}
-                        >
-                          <PencilIcon className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="secondary"
-                          size="sm"
-                          onClick={() => handleDeleteReview(idx)}
-                          className="text-red-600 hover:bg-red-50"
-                        >
-                          <TrashIcon className="w-4 h-4" />
-                        </Button>
+                        <div className="flex gap-2">
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleEditReview(review, idx)}
+                          >
+                            <PencilIcon className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            size="sm"
+                            onClick={() => handleDeleteReview(idx)}
+                            className="text-red-600 hover:bg-red-50"
+                          >
+                            <TrashIcon className="w-4 h-4" />
+                          </Button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
               </div>
             )}
           </div>

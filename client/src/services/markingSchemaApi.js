@@ -1,11 +1,11 @@
 import api from "./api";
 
-export const getMarkingSchema = async (academicYear, school, program) => {
+export const getMarkingSchema = async (academicYear, school, department) => {
   const response = await api.get("/admin/marking-schema", {
     params: {
       academicYear,
       school,
-      program,
+      department,
     },
   });
   return response.data;

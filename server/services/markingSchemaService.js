@@ -17,8 +17,8 @@ export class MarkingSchemaService {
       errors.push("School is required");
     }
 
-    if (!data.program) {
-      errors.push("Program is required");
+    if (!data.department) {
+      errors.push("Department is required");
     }
 
     if (
@@ -113,16 +113,21 @@ export class MarkingSchemaService {
   /**
    * Validate component IDs exist in component library
    */
-  static async validateComponentIds(components, academicYear, school, program) {
+  static async validateComponentIds(
+    components,
+    academicYear,
+    school,
+    department
+  ) {
     const library = await ComponentLibrary.findOne({
       academicYear,
       school,
-      program,
+      department,
     });
 
     if (!library) {
       throw new Error(
-        "Component library not found for this program. Please create component library first."
+        "Component library not found for this department. Please create component library first."
       );
     }
 
@@ -152,7 +157,7 @@ export class MarkingSchemaService {
   static async createOrUpdateMarkingSchema(data, createdBy = null) {
     const {
       school,
-      program,
+      department,
       academicYear,
       reviews,
       requiresContribution,
@@ -191,7 +196,7 @@ export class MarkingSchemaService {
             review.components,
             academicYear,
             school,
-            program
+            department
           );
         }
       }
@@ -221,7 +226,7 @@ export class MarkingSchemaService {
 
     const schemaData = {
       school,
-      program,
+      department,
       academicYear,
       reviews: cleanedReviews,
       requiresContribution: requiresContribution || false,
@@ -232,7 +237,7 @@ export class MarkingSchemaService {
     // Check if schema already exists
     const existingSchema = await MarkingSchema.findOne({
       school,
-      program,
+      department,
       academicYear,
     });
 
@@ -247,7 +252,7 @@ export class MarkingSchemaService {
           schemaId: schema._id,
           academicYear,
           school,
-          program,
+          department,
           reviewCount: cleanedReviews.length,
           updatedBy: createdBy,
         });
@@ -262,7 +267,7 @@ export class MarkingSchemaService {
           schemaId: schema._id,
           academicYear,
           school,
-          program,
+          department,
           reviewCount: cleanedReviews.length,
           createdBy,
         });
@@ -275,16 +280,16 @@ export class MarkingSchemaService {
   /**
    * Get marking schema
    */
-  static async getMarkingSchema(academicYear, school, program) {
+  static async getMarkingSchema(academicYear, school, department) {
     const schema = await MarkingSchema.findOne({
       academicYear,
       school,
-      program,
+      department,
       isActive: true,
     }).lean();
 
     if (!schema) {
-      throw new Error("Marking schema not found for this program.");
+      throw new Error("Marking schema not found for this department.");
     }
 
     return schema;
@@ -298,7 +303,7 @@ export class MarkingSchemaService {
 
     if (filters.academicYear) query.academicYear = filters.academicYear;
     if (filters.school) query.school = filters.school;
-    if (filters.program) query.program = filters.program;
+    if (filters.department) query.department = filters.department;
 
     return await MarkingSchema.find(query).sort({ createdAt: -1 }).lean();
   }
@@ -318,7 +323,7 @@ export class MarkingSchemaService {
       const validationData = {
         academicYear: schema.academicYear,
         school: schema.school,
-        program: schema.program,
+        department: schema.department,
         reviews: updates.reviews,
       };
 
@@ -336,7 +341,7 @@ export class MarkingSchemaService {
               review.components,
               schema.academicYear,
               schema.school,
-              schema.program
+              schema.department
             );
           }
         }

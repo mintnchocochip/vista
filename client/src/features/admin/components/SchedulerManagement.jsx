@@ -11,9 +11,9 @@ import LoadingSpinner from "../../../shared/components/LoadingSpinner";
 import DateTimePicker from "../../../shared/components/DateTimePicker";
 import { useToast } from "../../../shared/hooks/useToast";
 import {
-  fetchProgramConfig,
-  createProgramConfig,
-  updateProgramConfig,
+  fetchDepartmentConfig,
+  createDepartmentConfig,
+  updateDepartmentConfig,
   updateFeatureLock,
 } from "../services/adminApi";
 
@@ -41,8 +41,8 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
   const [selectedProgramme, setSelectedProgramme] = useState("");
   const [selectedYear, setSelectedYear] = useState("");
 
-  // Program config data
-  const [programConfig, setProgramConfig] = useState(null);
+  // Department config data
+  const [departmentConfig, setDepartmentConfig] = useState(null);
   const [loading, setLoading] = useState(false);
 
   // Form state
@@ -66,18 +66,16 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
   // Load department config when context changes
   useEffect(() => {
     if (filtersComplete.completed === 3) {
-      loadProgramConfig();
+      loadDepartmentConfig();
     } else {
-      setProgramConfig(null);
+      setDepartmentConfig(null);
     }
   }, [selectedSchool, selectedProgramme, selectedYear]);
 
-  const loadProgramConfig = async () => {
+  const loadDepartmentConfig = async () => {
     setLoading(true);
     try {
-      // Use strict comparison or string comparison depending on ID type.
-      // Assuming IDs are strings (ObjectIds) based on AdminSettings.
-      const yearObj = years.find((y) => y.id === selectedYear);
+      const yearObj = years.find((y) => y.id === parseInt(selectedYear));
       const schoolObj = schools.find((s) => s.code === selectedSchool);
       const programObj = programsBySchool[selectedSchool]?.find(
         (p) => p.code === selectedProgramme
@@ -87,21 +85,21 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
         return;
       }
 
-      const response = await fetchProgramConfig(
+      const response = await fetchDepartmentConfig(
         yearObj.name,
         schoolObj.code,
         programObj.code
       );
 
       if (response.success) {
-        setProgramConfig(response.data);
+        setDepartmentConfig(response.data);
       }
     } catch (error) {
       if (error.response?.status === 404) {
         // Config doesn't exist yet
-        setProgramConfig(null);
+        setDepartmentConfig(null);
       } else {
-        console.error("Error loading program config:", error);
+        console.error("Error loading department config:", error);
         showToast("Failed to load configuration", "error");
       }
     } finally {
@@ -110,11 +108,9 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
   };
 
   const contextSchedules = useMemo(() => {
-    // Map backend schema (featureName, deadline) to match component logic if needed,
-    // or just use backend names directly. Let's switch to backend names.
-    if (!programConfig || !programConfig.featureLocks) return [];
-    return programConfig.featureLocks;
-  }, [programConfig]);
+    if (!departmentConfig || !departmentConfig.featureLocks) return [];
+    return departmentConfig.featureLocks;
+  }, [departmentConfig]);
 
   const handleSchoolChange = (value) => {
     setSelectedSchool(value);
@@ -154,7 +150,7 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
       return;
     }
 
-    const yearObj = years.find((y) => y.id === selectedYear);
+    const yearObj = years.find((y) => y.id === parseInt(selectedYear));
     const schoolObj = schools.find((s) => s.code === selectedSchool);
     const programObj = programsBySchool[selectedSchool]?.find(
       (p) => p.code === selectedProgramme
@@ -169,29 +165,28 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
     try {
       let updatedLocks = [...(contextSchedules || [])];
       const existingIndex = updatedLocks.findIndex(
-        (l) => l.featureName === selectedFeature
+        (l) => l.feature === selectedFeature
       );
 
       if (existingIndex >= 0) {
         updatedLocks[existingIndex] = {
           ...updatedLocks[existingIndex],
-          featureName: selectedFeature,
-          deadline: activeUntilIso,
+          activeUntil: activeUntilIso,
         };
       } else {
         updatedLocks.push({
-          featureName: selectedFeature,
-          deadline: activeUntilIso,
+          feature: selectedFeature,
+          activeUntil: activeUntilIso,
           isLocked: false,
         });
       }
 
-      if (programConfig) {
+      if (departmentConfig) {
         // Update existing config
-        await updateFeatureLock(programConfig._id, updatedLocks);
+        await updateFeatureLock(departmentConfig._id, updatedLocks);
       } else {
         // Create new config
-        await createProgramConfig(
+        await createDepartmentConfig(
           yearObj.name,
           schoolObj.code,
           programObj.code,
@@ -206,7 +201,7 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
       }
 
       showToast("Schedule saved successfully", "success");
-      await loadProgramConfig();
+      await loadDepartmentConfig();
       setSelectedFeature("");
       setActiveUntil("");
     } catch (error) {
@@ -221,17 +216,17 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
   };
 
   const handleRemoveSchedule = async (featureId) => {
-    if (!programConfig) return;
+    if (!departmentConfig) return;
 
     setLoading(true);
     try {
       const updatedLocks = contextSchedules.filter(
-        (l) => l.featureName !== featureId
+        (l) => l.feature !== featureId
       );
-      await updateFeatureLock(programConfig._id, updatedLocks);
+      await updateFeatureLock(departmentConfig._id, updatedLocks);
 
       showToast("Schedule removed", "success");
-      await loadProgramConfig();
+      await loadDepartmentConfig();
 
       if (selectedFeature === featureId) {
         setSelectedFeature("");
@@ -247,11 +242,11 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
 
   const handleSelectExisting = (featureId) => {
     const existingSchedule = contextSchedules.find(
-      (s) => s.featureName === featureId
+      (s) => s.feature === featureId
     );
     if (existingSchedule) {
       setSelectedFeature(featureId);
-      setActiveUntil(toDatetimeLocalValue(existingSchedule.deadline));
+      setActiveUntil(toDatetimeLocalValue(existingSchedule.activeUntil));
     }
   };
 
@@ -431,15 +426,13 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
 
             <div className="space-y-3">
               {contextSchedules.map((schedule) => {
-                const feature = FEATURES.find(
-                  (f) => f.id === schedule.featureName
-                );
-                const deadline = new Date(schedule.deadline);
+                const feature = FEATURES.find((f) => f.id === schedule.feature);
+                const deadline = new Date(schedule.activeUntil);
                 const isExpired = deadline < new Date();
 
                 return (
                   <div
-                    key={schedule.featureName}
+                    key={schedule.feature}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex-1">
@@ -451,7 +444,7 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
                         )}
                         <div>
                           <p className="font-medium text-gray-900">
-                            {feature?.label || schedule.featureName}
+                            {feature?.label || schedule.feature}
                           </p>
                           <p className="text-sm text-gray-500">
                             Active until: {deadline.toLocaleString()}
@@ -463,9 +456,7 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() =>
-                          handleSelectExisting(schedule.featureName)
-                        }
+                        onClick={() => handleSelectExisting(schedule.feature)}
                         disabled={loading}
                       >
                         Edit
@@ -473,9 +464,7 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() =>
-                          handleRemoveSchedule(schedule.featureName)
-                        }
+                        onClick={() => handleRemoveSchedule(schedule.feature)}
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         disabled={loading}
                       >

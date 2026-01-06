@@ -121,7 +121,7 @@ export async function register(req, res) {
       phoneNumber,
       role,
       school,
-      program,
+      department,
       specialization,
     } = req.body;
 
@@ -147,7 +147,7 @@ export async function register(req, res) {
       phoneNumber,
       role,
       school,
-      program,
+      department,
       specialization: specialization || [],
     });
 

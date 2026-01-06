@@ -10,7 +10,7 @@ export class BroadcastService {
       title,
       message,
       targetSchools = [],
-      targetPrograms = [],
+      targetDepartments = [],
       targetAcademicYears = [],
       expiresAt,
       action = "notice",
@@ -33,7 +33,7 @@ export class BroadcastService {
       title: title || "",
       message,
       targetSchools,
-      targetPrograms,
+      targetDepartments,
       targetAcademicYears,
       createdBy: createdBy._id,
       createdByEmployeeId: createdBy.employeeId,
@@ -51,7 +51,7 @@ export class BroadcastService {
       action,
       priority,
       targetSchools: targetSchools.length,
-      targetPrograms: targetPrograms.length,
+      targetDepartments: targetDepartments.length,
       createdBy: createdBy._id,
     });
 
@@ -62,7 +62,7 @@ export class BroadcastService {
    * Get broadcasts with filters
    */
   static async getBroadcasts(filters = {}) {
-    const { isActive, action, school, program, academicYear } = filters;
+    const { isActive, action, school, department, academicYear } = filters;
 
     const query = {};
 
@@ -72,7 +72,7 @@ export class BroadcastService {
     // Auto-deactivate expired broadcasts
     await BroadcastMessage.updateMany(
       { isActive: true, expiresAt: { $lte: new Date() } },
-      { $set: { isActive: false } }
+      { $set: { isActive: false } },
     );
 
     let broadcasts = await BroadcastMessage.find(query)
@@ -80,21 +80,21 @@ export class BroadcastService {
       .lean();
 
     // Filter by audience if specified
-    if (school || program || academicYear) {
+    if (school || department || academicYear) {
       broadcasts = broadcasts.filter((b) => {
         const matchSchool =
           !school ||
           b.targetSchools.length === 0 ||
           b.targetSchools.includes(school);
-        const matchProg =
-          !program ||
-          b.targetPrograms.length === 0 ||
-          b.targetPrograms.includes(program);
+        const matchDept =
+          !department ||
+          b.targetDepartments.length === 0 ||
+          b.targetDepartments.includes(department);
         const matchYear =
           !academicYear ||
           b.targetAcademicYears.length === 0 ||
           b.targetAcademicYears.includes(academicYear);
-        return matchSchool && matchProg && matchYear;
+        return matchSchool && matchDept && matchYear;
       });
     }
 
@@ -116,8 +116,8 @@ export class BroadcastService {
     if (updates.message !== undefined) broadcast.message = updates.message;
     if (updates.targetSchools !== undefined)
       broadcast.targetSchools = updates.targetSchools;
-    if (updates.targetPrograms !== undefined)
-      broadcast.targetPrograms = updates.targetPrograms;
+    if (updates.targetDepartments !== undefined)
+      broadcast.targetDepartments = updates.targetDepartments;
     if (updates.targetAcademicYears !== undefined)
       broadcast.targetAcademicYears = updates.targetAcademicYears;
     if (updates.expiresAt !== undefined)

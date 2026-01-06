@@ -6,7 +6,10 @@ import Select from "../../../../shared/components/Select";
 import Input from "../../../../shared/components/Input";
 import { CheckCircleIcon } from "@heroicons/react/24/outline";
 import { useToast } from "../../../../shared/hooks/useToast";
-import { fetchProgramConfig, saveProgramConfig } from "../../services/adminApi";
+import {
+  fetchDepartmentConfig,
+  saveDepartmentConfig,
+} from "../../services/adminApi";
 
 const TeamSettings = ({
   schools,
@@ -63,7 +66,7 @@ const TeamSettings = ({
 
       setIsLoading(true);
       try {
-        const response = await fetchProgramConfig(
+        const response = await fetchDepartmentConfig(
           selectedYear,
           selectedSchool,
           selectedProgram
@@ -128,7 +131,7 @@ const TeamSettings = ({
         defaultTeamSize: settings.defaultStudentsPerTeam,
       };
 
-      const response = await saveProgramConfig(configData);
+      const response = await saveDepartmentConfig(configData);
 
       if (response.success) {
         // Build descriptive names for toast

@@ -37,7 +37,7 @@ const accessRequestSchema = new mongoose.Schema(
     },
 
     school: { type: String, required: true },
-    program: { type: String },
+    department: { type: String },
 
     // Admin response
     approvedBy: {

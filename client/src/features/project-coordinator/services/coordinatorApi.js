@@ -22,8 +22,7 @@ const adaptStudent = (backendStudent) => {
     email: backendStudent.emailId,
     emailId: backendStudent.emailId,
     school: backendStudent.school,
-    program: backendStudent.program, // Map backend 'program'
-    department: backendStudent.program, // Keep for compatibility
+    department: backendStudent.department,
     academicYear: backendStudent.academicYear,
     PAT: backendStudent.PAT || false,
     isActive: backendStudent.isActive !== false,
@@ -45,8 +44,7 @@ const adaptFaculty = (backendFaculty) => {
     email: backendFaculty.emailId,
     emailId: backendFaculty.emailId,
     school: backendFaculty.school,
-    program: backendFaculty.program, // Map backend 'program'
-    department: backendFaculty.program, // Keep for compatibility
+    department: backendFaculty.department,
     role: backendFaculty.role,
     specialization: backendFaculty.specialization,
     phoneNumber: backendFaculty.phoneNumber,
@@ -67,8 +65,7 @@ const adaptProject = (backendProject) => {
     type: backendProject.type || "Capstone Project",
     specialization: backendProject.specialization,
     school: backendProject.school,
-    program: backendProject.program, // Map backend 'program'
-    department: backendProject.program, // Keep for compatibility
+    department: backendProject.department,
     academicYear: backendProject.academicYear,
     status: backendProject.status || "active",
     teamMembers:
@@ -107,8 +104,7 @@ const adaptPanel = (backendPanel) => {
       })) || [],
     academicYear: backendPanel.academicYear,
     school: backendPanel.school,
-    program: backendPanel.program, // Map backend 'program'
-    department: backendPanel.program, // Keep for compatibility
+    department: backendPanel.department,
     isActive: backendPanel.isActive !== false,
     assignedProjects: backendPanel.assignedProjects || 0,
   };
@@ -253,8 +249,7 @@ export const createProject = async (projectData) => {
     specialization: projectData.specialization || "",
     type: projectData.type || "Capstone Project",
     school: projectData.school,
-    program:
-      projectData.program || projectData.programme || projectData.department,
+    department: projectData.department,
     academicYear: projectData.academicYear,
   };
 
@@ -273,7 +268,7 @@ export const bulkCreateProjects = async (projectsList) => {
     specialization: project.specialization || "",
     type: project.type || "Capstone Project",
     school: project.school,
-    program: project.program || project.programme || project.department,
+    department: project.department,
     academicYear: project.academicYear,
   }));
 
@@ -430,10 +425,10 @@ export const fetchAcademicYears = async () => {
 };
 
 /**
- * Get programs
+ * Get departments
  */
-export const fetchPrograms = async () => {
-  const response = await api.get("/coordinator/programs");
+export const fetchDepartments = async () => {
+  const response = await api.get("/coordinator/departments");
   return response.data;
 };
 
@@ -442,14 +437,6 @@ export const fetchPrograms = async () => {
  */
 export const requestAccess = async (data) => {
   const response = await api.post("/coordinator/request-access", data);
-  return response.data;
-};
-
-/**
- * Get coordinator permissions
- */
-export const fetchPermissions = async () => {
-  const response = await api.get("/coordinator/permissions");
   return response.data;
 };
 
@@ -494,8 +481,6 @@ export default {
 
   // Master Data
   fetchAcademicYears,
-  fetchPrograms,
-  fetchPrograms,
+  fetchDepartments,
   requestAccess,
-  fetchPermissions,
 };

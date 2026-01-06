@@ -192,7 +192,6 @@ import {
   ClipboardDocumentListIcon,
 } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
-import { fetchPermissions as apiFetchPermissions } from "../../services/coordinatorApi";
 
 const CoordinatorTabs = () => {
   const navigate = useNavigate();
@@ -204,7 +203,7 @@ const CoordinatorTabs = () => {
   // ==================================================================
   // FOR DEVELOPMENT: Bypass permission check → All tabs are free
   // ==================================================================
-  const IS_DEVELOPMENT = false; // <<<<< CHANGE THIS TO `false` IN PRODUCTION
+  const IS_DEVELOPMENT = true; // <<<<< CHANGE THIS TO `false` IN PRODUCTION
 
   // Fetch coordinator data (only needed in production)
   useEffect(() => {
@@ -217,10 +216,10 @@ const CoordinatorTabs = () => {
       }
 
       try {
-        const data = await apiFetchPermissions();
-        if (data.success) {
-          setCoordinator(data.data);
-        }
+        const res = await fetch("/api/coordinator/me");
+        if (!res.ok) throw new Error("Failed to fetch");
+        const data = await res.json();
+        setCoordinator(data);
       } catch (err) {
         console.error("Failed to fetch coordinator permissions", err);
         toast.error("Failed to load permissions");
@@ -360,11 +359,7 @@ const CoordinatorTabs = () => {
                       ? "bg-blue-600 text-white shadow-md"
                       : "bg-gray-50 text-gray-700 hover:bg-gray-100 hover:shadow"
                   }
-                  ${
-                    tab.blocked
-                      ? "opacity-50 cursor-not-allowed"
-                      : "cursor-pointer"
-                  }
+                  ${tab.blocked ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}
                 `}
                 title={
                   tab.blocked

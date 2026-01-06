@@ -19,7 +19,7 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
       deadline: { from: "", to: "" },
       pptRequired: false,
       draftRequired: false,
-      draftRequired: false,
+      order: 1,
       isActive: true,
     }
   );
@@ -169,7 +169,21 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
           </div>
 
           <div className="grid grid-cols-3 gap-6">
-            {/* Order removed as per request */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Order
+              </label>
+              <Input
+                type="number"
+                value={formData.order}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    order: parseInt(e.target.value) || 1,
+                  })
+                }
+              />
+            </div>
             <div className="col-span-2 flex items-center gap-6 mt-6">
               <label className="flex items-center">
                 <input

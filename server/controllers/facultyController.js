@@ -14,6 +14,7 @@ import {
   getFacultyAudience,
 } from "../utils/facultyHelpers.js";
 import { logger } from "../utils/logger.js";
+import MasterData from "../models/masterDataSchema.js";
 
 /**
  * Get faculty profile
@@ -42,6 +43,32 @@ export async function getProfile(req, res) {
 }
 
 /**
+ * Get master data
+ */
+export async function getMasterData(req, res) {
+  try {
+    const masterData = await MasterData.findOne();
+
+    if (!masterData) {
+      return res.status(404).json({
+        success: false,
+        message: "Master data not initialized.",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      data: masterData,
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+/**
  * Update faculty profile
  */
 export async function updateProfile(req, res) {
@@ -57,7 +84,7 @@ export async function updateProfile(req, res) {
     const faculty = await Faculty.findByIdAndUpdate(
       req.user._id,
       { $set: updates },
-      { new: true, runValidators: true }
+      { new: true, runValidators: true },
     ).select("-password");
 
     if (!faculty) {
@@ -98,17 +125,17 @@ export async function getMarkingSchema(req, res) {
       });
     }
 
-    const { school, program } = extractPrimaryContext(faculty);
+    const { school, department } = extractPrimaryContext(faculty);
 
-    if (!school || !program) {
+    if (!school || !department) {
       return res.status(400).json({
         success: false,
-        message: "Faculty school or program not set.",
+        message: "Faculty school or department not set.",
       });
     }
 
     const { academicYear } = req.query;
-    const query = { school, program };
+    const query = { school, department };
     if (academicYear) query.academicYear = academicYear;
 
     const schema = await MarkingSchema.findOne(query).lean();
@@ -162,7 +189,7 @@ export async function getProjectDetails(req, res) {
     const project = await Project.findById(id)
       .populate(
         "students",
-        "name regNo emailId guideMarks panelMarks approvals"
+        "name regNo emailId guideMarks panelMarks approvals",
       )
       .populate("guideFaculty", "name employeeId emailId")
       .populate({
@@ -185,7 +212,7 @@ export async function getProjectDetails(req, res) {
     const isGuide =
       project.guideFaculty?._id.toString() === facultyId.toString();
     const isPanelMember = project.panel?.members?.some(
-      (m) => m.faculty._id.toString() === facultyId.toString()
+      (m) => m.faculty._id.toString() === facultyId.toString(),
     );
 
     if (!isGuide && !isPanelMember) {
@@ -411,7 +438,7 @@ export async function getAssignedPanels(req, res) {
 export async function getBroadcasts(req, res) {
   try {
     const faculty = await Faculty.findById(req.user._id).select(
-      "school program"
+      "school department",
     );
 
     if (!faculty) {
@@ -421,7 +448,7 @@ export async function getBroadcasts(req, res) {
       });
     }
 
-    const { schools, programs } = getFacultyAudience(faculty);
+    const { schools, departments } = getFacultyAudience(faculty);
     const now = new Date();
 
     const broadcasts = await BroadcastMessage.find({
@@ -436,8 +463,8 @@ export async function getBroadcasts(req, res) {
         },
         {
           $or: [
-            { targetPrograms: { $size: 0 } },
-            { targetPrograms: { $in: programs } },
+            { targetDepartments: { $size: 0 } },
+            { targetDepartments: { $in: departments } },
           ],
         },
       ],

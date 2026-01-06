@@ -22,22 +22,8 @@ const ProgramSettings = ({ schools, programs, onUpdate }) => {
   const [programsBySchool, setProgramsBySchool] = useState(programs);
 
   // Sync with props when they change
-  // Group programs by school
   useEffect(() => {
-    const grouped = {};
-    if (Array.isArray(programs)) {
-      programs.forEach((prog) => {
-        const schoolCode = prog.school;
-        if (!grouped[schoolCode]) {
-          grouped[schoolCode] = [];
-        }
-        grouped[schoolCode].push(prog);
-      });
-    } else if (programs && typeof programs === "object") {
-      // Handle case where it might already be grouped or empty
-      Object.assign(grouped, programs);
-    }
-    setProgramsBySchool(grouped);
+    setProgramsBySchool(programs);
   }, [programs]);
   const [showModal, setShowModal] = useState(false);
   const [editingProgram, setEditingProgram] = useState(null);

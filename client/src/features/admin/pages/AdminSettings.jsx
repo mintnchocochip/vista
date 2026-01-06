@@ -58,9 +58,9 @@ const AdminSettings = () => {
             ?.filter((s) => s.isActive !== false)
             ?.map((s) => ({ id: s._id, name: s.name, code: s.code })) || [];
 
-        // Transform programs grouped by school (using programs from backend)
+        // Transform programs grouped by school (using departments from backend)
         const programsBySchool = {};
-        data.programs
+        data.departments
           ?.filter((d) => d.isActive !== false)
           .forEach((d) => {
             const schoolCode = d.school;

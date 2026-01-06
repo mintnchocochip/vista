@@ -15,7 +15,6 @@ import {
   createFaculty as apiCreateFaculty,
   updateFaculty as apiUpdateFaculty,
   deleteFaculty as apiDeleteFaculty,
-  fetchPermissions as apiFetchPermissions,
 } from "../services/coordinatorApi";
 
 const FacultyManagement = () => {
@@ -67,12 +66,7 @@ const FacultyManagement = () => {
           setCoordinatorSchool(schoolMap[user.school] || "1");
           setCoordinatorProgramme(programmMap[user.programme] || "1");
         }
-
-        // Fetch permissions to check if primary
-        const permResponse = await apiFetchPermissions();
-        if (permResponse.success) {
-          setIsPrimary(permResponse.data.isPrimary);
-        }
+        setIsPrimary(user?.isPrimary !== false); // Mock: assuming user is primary coordinator
       } catch (error) {
         console.error("Error fetching coordinator context:", error);
         showToast("Error loading coordinator context", "error");

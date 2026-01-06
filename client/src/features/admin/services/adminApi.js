@@ -8,9 +8,9 @@ import api from "../../../services/api";
  *
  * IMPORTANT: Field Mapping
  * - Frontend uses 'programme' (British spelling) for user-facing display
- * - Backend uses 'program' field to store programme data
- * - Hierarchy: School → Programme (stored as program in backend) → Academic Year
- * - All adapters map backend 'program' to frontend 'programme' for consistency
+ * - Backend uses 'department' field to store programme data
+ * - Hierarchy: School → Programme (stored as department in backend) → Academic Year
+ * - All adapters map backend 'department' to frontend 'programme' for consistency
  */
 
 // ==================== Data Adapters ====================
@@ -28,8 +28,8 @@ const adaptStudent = (backendStudent, project = null) => {
     email: backendStudent.emailId,
     emailId: backendStudent.emailId,
     school: backendStudent.school,
-    programme: backendStudent.program, // Backend uses 'program', frontend uses 'programme'
-    department: backendStudent.program, // Keep for compatibility
+    programme: backendStudent.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendStudent.department, // Keep for compatibility
     academicYear: backendStudent.academicYear,
     PAT: backendStudent.PAT || false,
     isActive: backendStudent.isActive !== false,
@@ -104,8 +104,8 @@ const adaptFaculty = (backendFaculty) => {
     email: backendFaculty.emailId,
     emailId: backendFaculty.emailId,
     school: backendFaculty.school,
-    programme: backendFaculty.program, // Backend uses 'program', frontend uses 'programme'
-    department: backendFaculty.program, // Keep for compatibility
+    programme: backendFaculty.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendFaculty.department, // Keep for compatibility
     role: backendFaculty.role,
     specialization: backendFaculty.specialization || [],
     phoneNumber: backendFaculty.phoneNumber,
@@ -131,8 +131,8 @@ const adaptPanel = (backendPanel) => {
       })) || [],
     academicYear: backendPanel.academicYear,
     school: backendPanel.school,
-    programme: backendPanel.program, // Backend uses 'program', frontend uses 'programme'
-    department: backendPanel.program, // Keep for compatibility
+    programme: backendPanel.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendPanel.department, // Keep for compatibility
     isActive: backendPanel.isActive !== false,
     assignedProjects: backendPanel.assignedProjects || 0,
     createdAt: backendPanel.createdAt,
@@ -161,8 +161,8 @@ const adaptProject = (backendProject) => {
     type: backendProject.type,
     academicYear: backendProject.academicYear,
     school: backendProject.school,
-    programme: backendProject.program, // Backend uses 'program', frontend uses 'programme'
-    department: backendProject.program, // Keep for compatibility
+    programme: backendProject.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendProject.department, // Keep for compatibility
     specialization: backendProject.specialization,
     teamSize: backendProject.teamSize || teamMembers.length,
     status: backendProject.status || "active",
@@ -196,18 +196,10 @@ const adaptProject = (backendProject) => {
 // ==================== Master Data APIs ====================
 
 /**
- * Fetch all master data (schools, programs, academic years)
+ * Fetch all master data (schools, departments, academic years)
  */
 export const fetchMasterData = async () => {
   const response = await api.get("/admin/master-data");
-  return response.data;
-};
-
-/**
- * Bulk create master data
- */
-export const createMasterDataBulk = async (payload) => {
-  const response = await api.post("/admin/master-data/bulk", payload);
   return response.data;
 };
 
@@ -289,10 +281,10 @@ export const deleteAcademicYear = async (id) => {
 };
 
 /**
- * Create program
+ * Create program (stored as department in backend)
  */
 export const createProgram = async (name, code, school) => {
-  const response = await api.post("/admin/master-data/programs", {
+  const response = await api.post("/admin/master-data/departments", {
     name,
     code,
     school,
@@ -301,10 +293,10 @@ export const createProgram = async (name, code, school) => {
 };
 
 /**
- * Update program
+ * Update program (stored as department in backend)
  */
 export const updateProgram = async (id, name, code, school) => {
-  const response = await api.put(`/admin/master-data/programs/${id}`, {
+  const response = await api.put(`/admin/master-data/departments/${id}`, {
     name,
     code,
     school,
@@ -313,11 +305,11 @@ export const updateProgram = async (id, name, code, school) => {
 };
 
 /**
- * Delete program
+ * Delete program (stored as department in backend)
  */
 export const deleteProgram = async (id) => {
-  // Use soft delete via update
-  const response = await api.put(`/admin/master-data/programs/${id}`, {
+  // Backend doesn't have delete for departments, use soft delete via update
+  const response = await api.put(`/admin/master-data/departments/${id}`, {
     isActive: false,
   });
   return response.data;
@@ -364,10 +356,9 @@ export const createStudent = async (studentData) => {
   // Map programme to department for backend
   const payload = {
     ...studentData,
-    program:
+    department:
       studentData.programme ||
       studentData.programmeId ||
-      studentData.program ||
       studentData.department,
   };
   const response = await api.post("/admin/student", payload);
@@ -383,7 +374,7 @@ export const bulkUploadStudents = async (students, school, programme) => {
     students,
     academicYear: students[0]?.yearId || students[0]?.academicYear,
     school,
-    program: programme,
+    department: programme, // Backend expects 'department' field
   });
   return response.data;
 };
@@ -561,8 +552,7 @@ export const createProject = async (projectData) => {
       specialization: projectData.specialization || "",
       type: projectData.type || "Capstone Project",
       school: projectData.school,
-      program:
-        projectData.programme || projectData.program || projectData.department,
+      department: projectData.programme || projectData.department, // Map programme to department for backend
       academicYear: projectData.academicYear,
     };
 
@@ -588,7 +578,7 @@ export const bulkCreateProjects = async (projectsList) => {
       specialization: project.specialization || "",
       type: project.type || "Capstone Project",
       school: project.school,
-      program: project.programme || project.program || project.department,
+      department: project.programme || project.department, // Map programme to department for backend
       academicYear: project.academicYear,
     }));
 
@@ -900,25 +890,29 @@ export const updateMarkingSchema = async (schemaId, data) => {
 // ==================== Department Config & Feature Locks ====================
 
 /**
- * Get program configuration
+ * Get department configuration
  */
-export const fetchProgramConfig = async (academicYear, school, program) => {
-  const response = await api.get("/admin/program-config", {
-    params: { academicYear, school, program },
+export const fetchDepartmentConfig = async (
+  academicYear,
+  school,
+  department
+) => {
+  const response = await api.get("/admin/department-config", {
+    params: { academicYear, school, department },
   });
   return response.data;
 };
 
 /**
- * Save program configuration (Create or Update)
+ * Save department configuration (Create or Update)
  * @param {Object} configData - { academicYear, school, program, minTeamSize, maxTeamSize, ... }
  */
-export const saveProgramConfig = async (configData) => {
+export const saveDepartmentConfig = async (configData) => {
   let existingId = null;
 
   // 1. Check if configuration already exists
   try {
-    const existing = await fetchProgramConfig(
+    const existing = await fetchDepartmentConfig(
       configData.academicYear,
       configData.school,
       configData.program
@@ -937,17 +931,17 @@ export const saveProgramConfig = async (configData) => {
   // 2. Update or Create based on existence
   if (existingId) {
     // Update existing
-    const response = await updateProgramConfig(existingId, {
+    const response = await updateDepartmentConfig(existingId, {
       ...configData,
-      program: configData.program,
+      department: configData.program, // Map program to department
     });
     return response;
   } else {
     // Create new
-    const response = await createProgramConfig(
+    const response = await createDepartmentConfig(
       configData.academicYear,
       configData.school,
-      configData.program,
+      configData.program, // Pass as department arg
       configData
     );
     return response;
@@ -955,28 +949,31 @@ export const saveProgramConfig = async (configData) => {
 };
 
 /**
- * Create program configuration
+ * Create department configuration
  */
-export const createProgramConfig = async (
+export const createDepartmentConfig = async (
   academicYear,
   school,
-  program,
+  department,
   config
 ) => {
-  const response = await api.post("/admin/program-config", {
+  const response = await api.post("/admin/department-config", {
     academicYear,
     school,
-    program,
+    department,
     ...config,
   });
   return response.data;
 };
 
 /**
- * Update program configuration
+ * Update department configuration
  */
-export const updateProgramConfig = async (configId, updates) => {
-  const response = await api.put(`/admin/program-config/${configId}`, updates);
+export const updateDepartmentConfig = async (configId, updates) => {
+  const response = await api.put(
+    `/admin/department-config/${configId}`,
+    updates
+  );
   return response.data;
 };
 
@@ -985,7 +982,7 @@ export const updateProgramConfig = async (configId, updates) => {
  */
 export const updateFeatureLock = async (configId, featureLocks) => {
   const response = await api.patch(
-    `/admin/program-config/${configId}/feature-lock`,
+    `/admin/department-config/${configId}/feature-lock`,
     {
       featureLocks,
     }
@@ -1062,10 +1059,11 @@ export default {
   saveMarkingSchema,
   updateMarkingSchema,
 
-  // Program Config & Feature Locks
-  fetchProgramConfig,
-  createProgramConfig,
-  updateProgramConfig,
-  saveProgramConfig,
+  // Department Config & Feature Locks
+  fetchDepartmentConfig,
+  createDepartmentConfig,
+  updateDepartmentConfig,
+  saveDepartmentConfig,
+  updateFeatureLock,
   updateFeatureLock,
 };
