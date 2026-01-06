@@ -25,7 +25,7 @@ export class MarksService {
     // Determine faculty type
     const { facultyType, project: projectDoc } = await getFacultyTypeForProject(
       facultyId,
-      project,
+      project
     );
 
     // Check for existing marks
@@ -37,7 +37,7 @@ export class MarksService {
 
     if (existingMarks && existingMarks.isSubmitted) {
       throw new Error(
-        "Marks already submitted for this review. Use update endpoint.",
+        "Marks already submitted for this review. Use update endpoint."
       );
     }
 
@@ -51,7 +51,7 @@ export class MarksService {
       throw new Error("Student or faculty not found.");
     }
 
-    const { school, department } = extractPrimaryContext(facultyDoc);
+    const { school, program } = extractPrimaryContext(facultyDoc);
 
     // Create marks
     const marks = new Marks({
@@ -62,7 +62,7 @@ export class MarksService {
       facultyType,
       academicYear: studentDoc.academicYear,
       school,
-      department,
+      program,
       componentMarks,
       totalMarks,
       maxTotalMarks,
@@ -102,7 +102,7 @@ export class MarksService {
 
     if (!marks) {
       throw new Error(
-        "Marks not found or you don't have permission to update.",
+        "Marks not found or you don't have permission to update."
       );
     }
 

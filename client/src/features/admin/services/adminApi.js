@@ -241,7 +241,7 @@ export const createDepartment = async (
   school,
   specializations = []
 ) => {
-  const response = await api.post("/admin/master-data/departments", {
+  const response = await api.post("/admin/master-data/programs", {
     name,
     code,
     school,
@@ -281,10 +281,10 @@ export const deleteAcademicYear = async (id) => {
 };
 
 /**
- * Create program (stored as department in backend)
+ * Create program
  */
 export const createProgram = async (name, code, school) => {
-  const response = await api.post("/admin/master-data/departments", {
+  const response = await api.post("/admin/master-data/programs", {
     name,
     code,
     school,
@@ -293,10 +293,10 @@ export const createProgram = async (name, code, school) => {
 };
 
 /**
- * Update program (stored as department in backend)
+ * Update program
  */
 export const updateProgram = async (id, name, code, school) => {
-  const response = await api.put(`/admin/master-data/departments/${id}`, {
+  const response = await api.put(`/admin/master-data/programs/${id}`, {
     name,
     code,
     school,
@@ -305,11 +305,10 @@ export const updateProgram = async (id, name, code, school) => {
 };
 
 /**
- * Delete program (stored as department in backend)
+ * Delete program (soft delete)
  */
 export const deleteProgram = async (id) => {
-  // Backend doesn't have delete for departments, use soft delete via update
-  const response = await api.put(`/admin/master-data/departments/${id}`, {
+  const response = await api.put(`/admin/master-data/programs/${id}`, {
     isActive: false,
   });
   return response.data;
@@ -540,7 +539,6 @@ export const fetchProjects = async (filters = {}) => {
 
 /**
  * Create a single project
- * Note: Uses coordinator endpoint as admin doesn't have separate project creation endpoint
  */
 export const createProject = async (projectData) => {
   try {
@@ -554,9 +552,10 @@ export const createProject = async (projectData) => {
       school: projectData.school,
       department: projectData.programme || projectData.department, // Map programme to department for backend
       academicYear: projectData.academicYear,
+      description: projectData.description,
     };
 
-    const response = await api.post("/coordinator/projects", payload);
+    const response = await api.post("/admin/projects", payload);
     return response.data;
   } catch (error) {
     console.error("Error creating project:", error);
@@ -566,7 +565,6 @@ export const createProject = async (projectData) => {
 
 /**
  * Bulk create projects
- * Note: Uses coordinator endpoint as admin doesn't have separate project creation endpoint
  */
 export const bulkCreateProjects = async (projectsList) => {
   try {
@@ -580,9 +578,10 @@ export const bulkCreateProjects = async (projectsList) => {
       school: project.school,
       department: project.programme || project.department, // Map programme to department for backend
       academicYear: project.academicYear,
+      description: project.description,
     }));
 
-    const response = await api.post("/coordinator/projects/bulk", { projects });
+    const response = await api.post("/admin/projects/bulk", { projects });
     return response.data;
   } catch (error) {
     console.error("Error bulk creating projects:", error);

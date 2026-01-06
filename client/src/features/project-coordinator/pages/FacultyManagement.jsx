@@ -15,6 +15,7 @@ import {
   createFaculty as apiCreateFaculty,
   updateFaculty as apiUpdateFaculty,
   deleteFaculty as apiDeleteFaculty,
+  fetchPermissions as apiFetchPermissions,
 } from "../services/coordinatorApi";
 
 const FacultyManagement = () => {
@@ -36,37 +37,16 @@ const FacultyManagement = () => {
       try {
         setLoading(true);
         // Get coordinator's school and programme from user data or API
-        if (user && user.school && user.programme) {
-          // Map school name to ID
-          const schoolMap = {
-            SCOPE: "1",
-            SENSE: "2",
-            SELECT: "3",
-            VITBS: "4",
-            VISH: "5",
-          };
-
-          const programmMap = {
-            "B.Tech CSE": "1",
-            "B.Tech IT": "2",
-            "M.Tech CSE": "3",
-            "B.Tech CSE (Specialization)": "4",
-            "B.Tech ECE": "5",
-            "B.Tech EEE": "6",
-            "M.Tech ECE": "7",
-            "B.Tech Mech": "8",
-            "B.Tech Civil": "9",
-            "B.Tech Aero": "10",
-            BBA: "11",
-            MBA: "12",
-            "BA English": "13",
-            "MA English": "14",
-          };
-
-          setCoordinatorSchool(schoolMap[user.school] || "1");
-          setCoordinatorProgramme(programmMap[user.programme] || "1");
+        if (user && user.school && user.department) {
+          setCoordinatorSchool(user.school);
+          setCoordinatorProgramme(user.department);
         }
-        setIsPrimary(user?.isPrimary !== false); // Mock: assuming user is primary coordinator
+
+        // Fetch permissions to check if primary
+        const permResponse = await apiFetchPermissions();
+        if (permResponse.success) {
+          setIsPrimary(permResponse.data.isPrimary);
+        }
       } catch (error) {
         console.error("Error fetching coordinator context:", error);
         showToast("Error loading coordinator context", "error");

@@ -9,7 +9,10 @@ import ProjectCreation from "../components/project-management/ProjectCreation";
 import Card from "../../../shared/components/Card";
 import { useToast } from "../../../shared/hooks/useToast";
 import { useAuth } from "../../../shared/hooks/useAuth";
-import { fetchProjects as apiFetchProjects } from "../services/coordinatorApi";
+import {
+  fetchProjects as apiFetchProjects,
+  fetchPermissions as apiFetchPermissions,
+} from "../services/coordinatorApi";
 
 const ProjectManagement = () => {
   const [activeTab, setActiveTab] = useState("view");
@@ -26,8 +29,10 @@ const ProjectManagement = () => {
       try {
         setLoading(true);
         // Mock API call delay
-        await new Promise((resolve) => setTimeout(resolve, 400));
-        setIsPrimary(true); // Mock: Grant primary access
+        const permResponse = await apiFetchPermissions();
+        if (permResponse.success) {
+          setIsPrimary(permResponse.data.isPrimary);
+        }
       } catch (error) {
         console.error("Error fetching permissions:", error);
         showToast("Error loading permissions", "error");

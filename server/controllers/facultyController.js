@@ -84,7 +84,7 @@ export async function updateProfile(req, res) {
     const faculty = await Faculty.findByIdAndUpdate(
       req.user._id,
       { $set: updates },
-      { new: true, runValidators: true },
+      { new: true, runValidators: true }
     ).select("-password");
 
     if (!faculty) {
@@ -125,17 +125,17 @@ export async function getMarkingSchema(req, res) {
       });
     }
 
-    const { school, department } = extractPrimaryContext(faculty);
+    const { school, program } = extractPrimaryContext(faculty);
 
-    if (!school || !department) {
+    if (!school || !program) {
       return res.status(400).json({
         success: false,
-        message: "Faculty school or department not set.",
+        message: "Faculty school or program not set.",
       });
     }
 
     const { academicYear } = req.query;
-    const query = { school, department };
+    const query = { school, program };
     if (academicYear) query.academicYear = academicYear;
 
     const schema = await MarkingSchema.findOne(query).lean();
@@ -189,7 +189,7 @@ export async function getProjectDetails(req, res) {
     const project = await Project.findById(id)
       .populate(
         "students",
-        "name regNo emailId guideMarks panelMarks approvals",
+        "name regNo emailId guideMarks panelMarks approvals"
       )
       .populate("guideFaculty", "name employeeId emailId")
       .populate({
@@ -212,7 +212,7 @@ export async function getProjectDetails(req, res) {
     const isGuide =
       project.guideFaculty?._id.toString() === facultyId.toString();
     const isPanelMember = project.panel?.members?.some(
-      (m) => m.faculty._id.toString() === facultyId.toString(),
+      (m) => m.faculty._id.toString() === facultyId.toString()
     );
 
     if (!isGuide && !isPanelMember) {
@@ -380,6 +380,8 @@ export async function createRequest(req, res) {
       student,
       project,
       academicYear: studentDoc.academicYear,
+      school: studentDoc.school,
+      program: studentDoc.program,
       reviewType,
       requestType,
       reason,
@@ -438,7 +440,7 @@ export async function getAssignedPanels(req, res) {
 export async function getBroadcasts(req, res) {
   try {
     const faculty = await Faculty.findById(req.user._id).select(
-      "school department",
+      "school program"
     );
 
     if (!faculty) {
@@ -448,7 +450,7 @@ export async function getBroadcasts(req, res) {
       });
     }
 
-    const { schools, departments } = getFacultyAudience(faculty);
+    const { schools, programs } = getFacultyAudience(faculty);
     const now = new Date();
 
     const broadcasts = await BroadcastMessage.find({
@@ -463,8 +465,8 @@ export async function getBroadcasts(req, res) {
         },
         {
           $or: [
-            { targetDepartments: { $size: 0 } },
-            { targetDepartments: { $in: departments } },
+            { targetPrograms: { $size: 0 } },
+            { targetPrograms: { $in: programs } },
           ],
         },
       ],

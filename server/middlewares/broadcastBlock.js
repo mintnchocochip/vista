@@ -18,7 +18,7 @@ export const broadcastBlockMiddleware = async (req, res, next) => {
     }
 
     const faculty = await Faculty.findById(facultyId)
-      .select("school department")
+      .select("school program")
       .lean();
 
     if (!faculty) {
@@ -29,8 +29,8 @@ export const broadcastBlockMiddleware = async (req, res, next) => {
       ? faculty.school.filter(Boolean)
       : [];
 
-    const facultyDepartments = Array.isArray(faculty.department)
-      ? faculty.department.filter(Boolean)
+    const facultyPrograms = Array.isArray(faculty.program)
+      ? faculty.program.filter(Boolean)
       : [];
 
     const now = new Date();
@@ -42,7 +42,7 @@ export const broadcastBlockMiddleware = async (req, res, next) => {
           isActive: true,
           expiresAt: { $lte: now },
         },
-        { $set: { isActive: false } },
+        { $set: { isActive: false } }
       );
     } catch (deactivateError) {
       logger.warn("broadcast_auto_deactivate_failed", {
@@ -61,8 +61,8 @@ export const broadcastBlockMiddleware = async (req, res, next) => {
         },
         {
           $or: [
-            { targetDepartments: { $size: 0 } },
-            { targetDepartments: { $in: facultyDepartments } },
+            { targetPrograms: { $size: 0 } },
+            { targetPrograms: { $in: facultyPrograms } },
           ],
         },
       ],
