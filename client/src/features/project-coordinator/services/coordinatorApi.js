@@ -445,6 +445,14 @@ export const requestAccess = async (data) => {
   return response.data;
 };
 
+/**
+ * Get coordinator permissions
+ */
+export const fetchPermissions = async () => {
+  const response = await api.get("/coordinator/permissions");
+  return response.data;
+};
+
 // Export all functions
 export default {
   // Students
@@ -487,5 +495,7 @@ export default {
   // Master Data
   fetchAcademicYears,
   fetchPrograms,
+  fetchPrograms,
   requestAccess,
+  fetchPermissions,
 };

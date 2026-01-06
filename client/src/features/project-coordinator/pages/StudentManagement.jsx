@@ -10,7 +10,10 @@ import Card from "../../../shared/components/Card";
 import Button from "../../../shared/components/Button";
 import { useToast } from "../../../shared/hooks/useToast";
 import { useAuth } from "../../../shared/hooks/useAuth";
-import { fetchStudents as apiFetchStudents } from "../services/coordinatorApi";
+import {
+  fetchStudents as apiFetchStudents,
+  fetchPermissions as apiFetchPermissions,
+} from "../services/coordinatorApi";
 
 const StudentManagement = () => {
   const [filters, setFilters] = useState(null);
@@ -26,8 +29,10 @@ const StudentManagement = () => {
     const fetchCoordinatorPermissions = async () => {
       try {
         setLoading(true);
-        await new Promise((resolve) => setTimeout(resolve, 300));
-        setIsPrimary(true); // Mock: assuming user is primary coordinator
+        const permResponse = await apiFetchPermissions();
+        if (permResponse.success) {
+          setIsPrimary(permResponse.data.isPrimary);
+        }
       } catch (error) {
         console.error("Error fetching coordinator permissions:", error);
         showToast("Error loading permissions", "error");
