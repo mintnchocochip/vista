@@ -2279,6 +2279,7 @@ export async function createDepartmentConfig(req, res) {
       department,
       maxTeamSize,
       minTeamSize,
+      defaultTeamSize,
       maxPanelSize,
       minPanelSize,
       featureLocks,
@@ -2304,6 +2305,7 @@ export async function createDepartmentConfig(req, res) {
       department,
       maxTeamSize: maxTeamSize || 4,
       minTeamSize: minTeamSize || 1,
+      defaultTeamSize: defaultTeamSize || 3,
       maxPanelSize: maxPanelSize || 5,
       minPanelSize: minPanelSize || 3,
       featureLocks: featureLocks || [],
@@ -2337,11 +2339,7 @@ export async function updateDepartmentConfig(req, res) {
     const { id } = req.params;
     const updates = req.body;
 
-    const config = await DepartmentConfig.findByIdAndUpdate(
-      id,
-      { $set: updates },
-      { new: true, runValidators: true }
-    );
+    const config = await DepartmentConfig.findById(id);
 
     if (!config) {
       return res.status(404).json({
@@ -2350,8 +2348,15 @@ export async function updateDepartmentConfig(req, res) {
       });
     }
 
+    // Apply updates
+    Object.keys(updates).forEach((key) => {
+      config[key] = updates[key];
+    });
+
+    await config.save();
+
     logger.info("department_config_updated", {
-      configId: id,
+      configId: config._id,
       updatedBy: req.user._id,
     });
 

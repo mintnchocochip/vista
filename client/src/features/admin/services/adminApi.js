@@ -904,6 +904,51 @@ export const fetchDepartmentConfig = async (
 };
 
 /**
+ * Save department configuration (Create or Update)
+ * @param {Object} configData - { academicYear, school, program, minTeamSize, maxTeamSize, ... }
+ */
+export const saveDepartmentConfig = async (configData) => {
+  let existingId = null;
+
+  // 1. Check if configuration already exists
+  try {
+    const existing = await fetchDepartmentConfig(
+      configData.academicYear,
+      configData.school,
+      configData.program
+    );
+
+    if (existing.success && existing.data) {
+      existingId = existing.data._id;
+    }
+  } catch (error) {
+    // Ignore 404s (not found), rethrow others
+    if (error.response && error.response.status !== 404) {
+      throw error;
+    }
+  }
+
+  // 2. Update or Create based on existence
+  if (existingId) {
+    // Update existing
+    const response = await updateDepartmentConfig(existingId, {
+      ...configData,
+      department: configData.program, // Map program to department
+    });
+    return response;
+  } else {
+    // Create new
+    const response = await createDepartmentConfig(
+      configData.academicYear,
+      configData.school,
+      configData.program, // Pass as department arg
+      configData
+    );
+    return response;
+  }
+};
+
+/**
  * Create department configuration
  */
 export const createDepartmentConfig = async (
@@ -1018,5 +1063,7 @@ export default {
   fetchDepartmentConfig,
   createDepartmentConfig,
   updateDepartmentConfig,
+  saveDepartmentConfig,
+  updateFeatureLock,
   updateFeatureLock,
 };

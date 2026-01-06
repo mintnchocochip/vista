@@ -22,7 +22,7 @@ const featureLockSchema = new mongoose.Schema(
     deadline: { type: Date, required: true },
     isLocked: { type: Boolean, default: false },
   },
-  { _id: false },
+  { _id: false }
 );
 
 const departmentConfigSchema = new mongoose.Schema(
@@ -50,6 +50,19 @@ const departmentConfigSchema = new mongoose.Schema(
       default: 4,
       min: 1,
       max: 10,
+    },
+    defaultTeamSize: {
+      type: Number,
+      required: false,
+      default: 3,
+      min: 1,
+      max: 10,
+      validate: {
+        validator: function (value) {
+          return value >= this.minTeamSize && value <= this.maxTeamSize;
+        },
+        message: "defaultTeamSize must be between minTeamSize and maxTeamSize",
+      },
     },
 
     // Panel size constraints
@@ -80,17 +93,17 @@ const departmentConfigSchema = new mongoose.Schema(
     // Feature locks with deadlines
     featureLocks: [featureLockSchema],
   },
-  { timestamps: true },
+  { timestamps: true }
 );
 
 departmentConfigSchema.index(
   { academicYear: 1, school: 1, department: 1 },
-  { unique: true },
+  { unique: true }
 );
 
 const DepartmentConfig = mongoose.model(
   "DepartmentConfig",
-  departmentConfigSchema,
+  departmentConfigSchema
 );
 
 export default DepartmentConfig;
