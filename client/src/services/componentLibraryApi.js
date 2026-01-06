@@ -5,12 +5,12 @@ import api from "./api";
  * Get component library for a specific academic context
  * Backend expects: academicYear (String), school (String), program (String) as query params
  */
-export const getComponentLibrary = async (academicYear, school, department) => {
+export const getComponentLibrary = async (academicYear, school, program) => {
   const response = await api.get("/admin/component-library", {
     params: {
       academicYear: String(academicYear),
       school: String(school),
-      program: String(department), // Use program parameter
+      program: String(program),
     },
   });
   return response.data;
@@ -18,7 +18,7 @@ export const getComponentLibrary = async (academicYear, school, department) => {
 
 /**
  * Create a new component library
- * Backend expects: { academicYear, school, department, components }
+ * Backend expects: { academicYear, school, program, components }
  * components: Array of component objects with structure:
  * {
  *   name: String (required),
@@ -36,7 +36,7 @@ export const createComponentLibrary = async (data) => {
   const payload = {
     academicYear: String(data.academicYear),
     school: String(data.school),
-    program: String(data.department), // Map department to program
+    program: String(data.program), // Map department to program
     components: Array.isArray(data.components)
       ? data.components.map((comp) => ({
           name: String(comp.name),

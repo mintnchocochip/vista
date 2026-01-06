@@ -110,6 +110,8 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
   };
 
   const contextSchedules = useMemo(() => {
+    // Map backend schema (featureName, deadline) to match component logic if needed,
+    // or just use backend names directly. Let's switch to backend names.
     if (!programConfig || !programConfig.featureLocks) return [];
     return programConfig.featureLocks;
   }, [programConfig]);
@@ -167,18 +169,19 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
     try {
       let updatedLocks = [...(contextSchedules || [])];
       const existingIndex = updatedLocks.findIndex(
-        (l) => l.feature === selectedFeature
+        (l) => l.featureName === selectedFeature
       );
 
       if (existingIndex >= 0) {
         updatedLocks[existingIndex] = {
           ...updatedLocks[existingIndex],
-          activeUntil: activeUntilIso,
+          featureName: selectedFeature,
+          deadline: activeUntilIso,
         };
       } else {
         updatedLocks.push({
-          feature: selectedFeature,
-          activeUntil: activeUntilIso,
+          featureName: selectedFeature,
+          deadline: activeUntilIso,
           isLocked: false,
         });
       }
@@ -223,7 +226,7 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
     setLoading(true);
     try {
       const updatedLocks = contextSchedules.filter(
-        (l) => l.feature !== featureId
+        (l) => l.featureName !== featureId
       );
       await updateFeatureLock(programConfig._id, updatedLocks);
 
@@ -244,11 +247,11 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
 
   const handleSelectExisting = (featureId) => {
     const existingSchedule = contextSchedules.find(
-      (s) => s.feature === featureId
+      (s) => s.featureName === featureId
     );
     if (existingSchedule) {
       setSelectedFeature(featureId);
-      setActiveUntil(toDatetimeLocalValue(existingSchedule.activeUntil));
+      setActiveUntil(toDatetimeLocalValue(existingSchedule.deadline));
     }
   };
 
@@ -428,13 +431,15 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
 
             <div className="space-y-3">
               {contextSchedules.map((schedule) => {
-                const feature = FEATURES.find((f) => f.id === schedule.feature);
-                const deadline = new Date(schedule.activeUntil);
+                const feature = FEATURES.find(
+                  (f) => f.id === schedule.featureName
+                );
+                const deadline = new Date(schedule.deadline);
                 const isExpired = deadline < new Date();
 
                 return (
                   <div
-                    key={schedule.feature}
+                    key={schedule.featureName}
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                   >
                     <div className="flex-1">
@@ -446,7 +451,7 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
                         )}
                         <div>
                           <p className="font-medium text-gray-900">
-                            {feature?.label || schedule.feature}
+                            {feature?.label || schedule.featureName}
                           </p>
                           <p className="text-sm text-gray-500">
                             Active until: {deadline.toLocaleString()}
@@ -458,7 +463,9 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handleSelectExisting(schedule.feature)}
+                        onClick={() =>
+                          handleSelectExisting(schedule.featureName)
+                        }
                         disabled={loading}
                       >
                         Edit
@@ -466,7 +473,9 @@ const SchedulerManagement = ({ schools, programsBySchool, years }) => {
                       <Button
                         variant="secondary"
                         size="sm"
-                        onClick={() => handleRemoveSchedule(schedule.feature)}
+                        onClick={() =>
+                          handleRemoveSchedule(schedule.featureName)
+                        }
                         className="text-red-600 hover:text-red-700 hover:bg-red-50"
                         disabled={loading}
                       >

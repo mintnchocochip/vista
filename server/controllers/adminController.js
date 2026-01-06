@@ -155,9 +155,17 @@ export async function getMarkingSchema(req, res) {
 
 export async function createOrUpdateMarkingSchema(req, res) {
   try {
-    const schema = await MarkingSchemaService.createOrUpdateMarkingSchema(
-      req.body,
-      req.user._id
+    const { academicYear, school, program, reviews } = req.body;
+
+    const schema = await MarkingSchema.findOneAndUpdate(
+      { academicYear, school, program: program },
+      {
+        academicYear,
+        school,
+        program: program,
+        reviews,
+      },
+      { new: true, upsert: true }
     );
 
     res.status(200).json({
@@ -1113,7 +1121,7 @@ export async function updateProjectCoordinator(req, res) {
         {
           academicYear: coordinator.academicYear,
           school: coordinator.school,
-          department: coordinator.department,
+          program: coordinator.program, // Changed from department to program
           isPrimary: true,
           _id: { $ne: id },
         },
@@ -1218,7 +1226,7 @@ export async function getComponentLibrary(req, res) {
     const library = await ComponentLibrary.findOne({
       academicYear,
       school,
-      department,
+      program: program, // Match schema field (update schema if it still uses department)
     }).lean();
 
     if (!library) {
@@ -1242,12 +1250,15 @@ export async function getComponentLibrary(req, res) {
 
 export async function createComponentLibrary(req, res) {
   try {
-    const { academicYear, school, department, components } = req.body;
+    const { academicYear, school, program, department, components } = req.body;
+
+    // Handle both for backward compatibility
+    const programCode = program || department;
 
     const existing = await ComponentLibrary.findOne({
       academicYear,
       school,
-      department,
+      program: programCode,
     });
 
     if (existing) {
@@ -1260,7 +1271,7 @@ export async function createComponentLibrary(req, res) {
     const library = new ComponentLibrary({
       academicYear,
       school,
-      department,
+      program: programCode,
       components,
     });
 
@@ -1270,7 +1281,7 @@ export async function createComponentLibrary(req, res) {
       libraryId: library._id,
       academicYear,
       school,
-      department,
+      program: programCode,
       createdBy: req.user._id,
     });
 
@@ -1336,33 +1347,33 @@ export async function getOverviewReport(req, res) {
       totalPanels,
       completedProjects,
     ] = await Promise.all([
-      Project.countDocuments({ academicYear, school, department }),
+      Project.countDocuments({ academicYear, school, program }),
       Project.countDocuments({
         academicYear,
         school,
-        department,
+        program,
         status: "active",
       }),
       Student.countDocuments({
         academicYear,
         school,
-        department,
+        program,
         isActive: true,
       }),
       Faculty.countDocuments({
         school: { $in: [school] },
-        department: { $in: [department] },
+        program: { $in: [program] },
       }),
       Panel.countDocuments({
         academicYear,
         school,
-        department,
+        program,
         isActive: true,
       }),
       Project.countDocuments({
         academicYear,
         school,
-        department,
+        program,
         status: "completed",
       }),
     ]);

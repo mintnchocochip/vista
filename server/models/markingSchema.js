@@ -45,7 +45,7 @@ const reviewSchema = new mongoose.Schema(
     pptRequired: { type: Boolean, default: false },
     draftRequired: { type: Boolean, default: false },
 
-    order: { type: Number, required: true },
+    // order removed
 
     isActive: { type: Boolean, default: true },
   },
