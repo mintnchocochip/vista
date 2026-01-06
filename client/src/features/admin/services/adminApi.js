@@ -1,0 +1,1069 @@
+// src/features/admin/services/adminApi.js
+import api from "../../../services/api";
+
+/**
+ * Admin API Service
+ * Handles all API calls for admin features with data adapters
+ * Backend is the source of truth
+ *
+ * IMPORTANT: Field Mapping
+ * - Frontend uses 'programme' (British spelling) for user-facing display
+ * - Backend uses 'department' field to store programme data
+ * - Hierarchy: School → Programme (stored as department in backend) → Academic Year
+ * - All adapters map backend 'department' to frontend 'programme' for consistency
+ */
+
+// ==================== Data Adapters ====================
+
+/**
+ * Adapt backend student data to frontend format
+ */
+const adaptStudent = (backendStudent, project = null) => {
+  if (!backendStudent) return null;
+
+  const adapted = {
+    _id: backendStudent._id,
+    regNo: backendStudent.regNo,
+    name: backendStudent.name,
+    email: backendStudent.emailId,
+    emailId: backendStudent.emailId,
+    school: backendStudent.school,
+    programme: backendStudent.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendStudent.department, // Keep for compatibility
+    academicYear: backendStudent.academicYear,
+    PAT: backendStudent.PAT || false,
+    isActive: backendStudent.isActive !== false,
+  };
+
+  // If project data is populated
+  if (project) {
+    adapted.projectId = project._id;
+    adapted.projectName = project.name;
+    adapted.projectType = project.type;
+
+    // Guide info
+    if (project.guideFaculty) {
+      adapted.guide =
+        typeof project.guideFaculty === "object"
+          ? project.guideFaculty.name
+          : null;
+      adapted.guideId =
+        typeof project.guideFaculty === "object"
+          ? project.guideFaculty._id
+          : project.guideFaculty;
+    }
+
+    // Panel info
+    if (project.panel) {
+      adapted.panelId =
+        typeof project.panel === "object" ? project.panel._id : project.panel;
+    }
+
+    // Team members (other students)
+    adapted.teammates = project.students
+      ? project.students
+          .filter((s) => s._id?.toString() !== backendStudent._id?.toString())
+          .map((s) => ({
+            _id: s._id,
+            id: s._id,
+            name: s.name,
+            regNo: s.regNo,
+            email: s.emailId,
+          }))
+      : [];
+
+    adapted.teamSize = project.teamSize || adapted.teammates.length + 1;
+  }
+
+  // PPT approval status from approvals map
+  if (backendStudent.approvals?.ppt) {
+    const pptApproval = backendStudent.approvals.ppt;
+    adapted.pptStatus = pptApproval.approved
+      ? "approved"
+      : pptApproval.locked
+      ? "rejected"
+      : "pending";
+    adapted.pptApprovedAt = pptApproval.approvedAt;
+  } else {
+    adapted.pptStatus = "pending";
+  }
+
+  return adapted;
+};
+
+/**
+ * Adapt backend faculty data to frontend format
+ */
+const adaptFaculty = (backendFaculty) => {
+  if (!backendFaculty) return null;
+
+  return {
+    _id: backendFaculty._id,
+    employeeId: backendFaculty.employeeId,
+    name: backendFaculty.name,
+    email: backendFaculty.emailId,
+    emailId: backendFaculty.emailId,
+    school: backendFaculty.school,
+    programme: backendFaculty.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendFaculty.department, // Keep for compatibility
+    role: backendFaculty.role,
+    specialization: backendFaculty.specialization || [],
+    phoneNumber: backendFaculty.phoneNumber,
+    isActive: backendFaculty.isActive !== false,
+    isProjectCoordinator: backendFaculty.isProjectCoordinator || false,
+  };
+};
+
+/**
+ * Adapt backend panel data to frontend format
+ */
+const adaptPanel = (backendPanel) => {
+  if (!backendPanel) return null;
+
+  return {
+    _id: backendPanel._id,
+    members:
+      backendPanel.members?.map((m) => ({
+        _id: m._id,
+        employeeId: m.employeeId,
+        name: m.name,
+        email: m.emailId,
+      })) || [],
+    academicYear: backendPanel.academicYear,
+    school: backendPanel.school,
+    programme: backendPanel.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendPanel.department, // Keep for compatibility
+    isActive: backendPanel.isActive !== false,
+    assignedProjects: backendPanel.assignedProjects || 0,
+    createdAt: backendPanel.createdAt,
+  };
+};
+
+/**
+ * Adapt backend project data to frontend format
+ */
+const adaptProject = (backendProject) => {
+  if (!backendProject) return null;
+
+  const teamMembers =
+    backendProject.students?.map((s) => ({
+      _id: s._id,
+      regNo: s.regNo,
+      name: s.name,
+      email: s.emailId,
+      emailId: s.emailId,
+    })) || [];
+
+  return {
+    _id: backendProject._id,
+    name: backendProject.name,
+    description: backendProject.description,
+    type: backendProject.type,
+    academicYear: backendProject.academicYear,
+    school: backendProject.school,
+    programme: backendProject.department, // Backend uses 'department', frontend uses 'programme'
+    department: backendProject.department, // Keep for compatibility
+    specialization: backendProject.specialization,
+    teamSize: backendProject.teamSize || teamMembers.length,
+    status: backendProject.status || "active",
+    bestProject: backendProject.bestProject || false,
+    guide: backendProject.guideFaculty
+      ? {
+          _id:
+            typeof backendProject.guideFaculty === "object"
+              ? backendProject.guideFaculty._id
+              : backendProject.guideFaculty,
+          name: backendProject.guideFaculty?.name || "Not Assigned",
+          employeeId: backendProject.guideFaculty?.employeeId || "",
+          email: backendProject.guideFaculty?.emailId || "",
+        }
+      : null,
+    guideId:
+      typeof backendProject.guideFaculty === "object"
+        ? backendProject.guideFaculty._id
+        : backendProject.guideFaculty,
+    students: teamMembers,
+    teamMembers: teamMembers, // Alias for compatibility
+    panel: backendProject.panel ? adaptPanel(backendProject.panel) : null,
+    panelId:
+      typeof backendProject.panel === "object"
+        ? backendProject.panel._id
+        : backendProject.panel,
+    createdAt: backendProject.createdAt,
+  };
+};
+
+// ==================== Master Data APIs ====================
+
+/**
+ * Fetch all master data (schools, departments, academic years)
+ */
+export const fetchMasterData = async () => {
+  const response = await api.get("/admin/master-data");
+  return response.data;
+};
+
+/**
+ * Create school
+ */
+export const createSchool = async (name, code) => {
+  const response = await api.post("/admin/master-data/schools", { name, code });
+  return response.data;
+};
+
+/**
+ * Update school
+ */
+export const updateSchool = async (id, name, code) => {
+  const response = await api.put(`/admin/master-data/schools/${id}`, {
+    name,
+    code,
+  });
+  return response.data;
+};
+
+/**
+ * Delete school (soft delete)
+ */
+export const deleteSchool = async (id) => {
+  const response = await api.put(`/admin/master-data/schools/${id}`, {
+    isActive: false,
+  });
+  return response.data;
+};
+
+/**
+ * Create department
+ */
+export const createDepartment = async (
+  name,
+  code,
+  school,
+  specializations = []
+) => {
+  const response = await api.post("/admin/master-data/departments", {
+    name,
+    code,
+    school,
+    specializations,
+  });
+  return response.data;
+};
+
+/**
+ * Create academic year
+ */
+export const createAcademicYear = async (year) => {
+  const response = await api.post("/admin/master-data/academic-years", {
+    year,
+  });
+  return response.data;
+};
+
+/**
+ * Update academic year
+ */
+export const updateAcademicYear = async (id, year) => {
+  const response = await api.put(`/admin/master-data/academic-years/${id}`, {
+    year,
+  });
+  return response.data;
+};
+
+/**
+ * Delete academic year (soft delete)
+ */
+export const deleteAcademicYear = async (id) => {
+  const response = await api.put(`/admin/master-data/academic-years/${id}`, {
+    isActive: false,
+  });
+  return response.data;
+};
+
+/**
+ * Create program (stored as department in backend)
+ */
+export const createProgram = async (name, code, school) => {
+  const response = await api.post("/admin/master-data/departments", {
+    name,
+    code,
+    school,
+  });
+  return response.data;
+};
+
+/**
+ * Update program (stored as department in backend)
+ */
+export const updateProgram = async (id, name, code, school) => {
+  const response = await api.put(`/admin/master-data/departments/${id}`, {
+    name,
+    code,
+    school,
+  });
+  return response.data;
+};
+
+/**
+ * Delete program (stored as department in backend)
+ */
+export const deleteProgram = async (id) => {
+  // Backend doesn't have delete for departments, use soft delete via update
+  const response = await api.put(`/admin/master-data/departments/${id}`, {
+    isActive: false,
+  });
+  return response.data;
+};
+
+// ==================== Student APIs ====================
+
+/**
+ * Fetch students based on filters
+ * @param {Object} filters - { academicYear, school, department, regNo, name }
+ */
+export const fetchStudents = async (filters = {}) => {
+  const response = await api.get("/admin/students", { params: filters });
+  if (response.data.success) {
+    // Return adapted students with project info if available
+    return {
+      success: true,
+      count: response.data.count,
+      students: response.data.data || [],
+    };
+  }
+  return response.data;
+};
+
+/**
+ * Fetch detailed information for a specific student by regNo
+ * @param {string} regNo - The student registration number
+ */
+export const fetchStudentDetails = async (regNo) => {
+  const response = await api.get(`/admin/student/${regNo}`);
+  if (response.data.success) {
+    return {
+      success: true,
+      student: response.data.data,
+    };
+  }
+  return response.data;
+};
+
+/**
+ * Create a single student
+ */
+export const createStudent = async (studentData) => {
+  // Map programme to department for backend
+  const payload = {
+    ...studentData,
+    department:
+      studentData.programme ||
+      studentData.programmeId ||
+      studentData.department,
+  };
+  const response = await api.post("/admin/student", payload);
+  return response.data;
+};
+
+/**
+ * Bulk upload students
+ */
+export const bulkUploadStudents = async (students, school, programme) => {
+  // Map programme to department for backend
+  const response = await api.post("/admin/student/bulk", {
+    students,
+    academicYear: students[0]?.yearId || students[0]?.academicYear,
+    school,
+    department: programme, // Backend expects 'department' field
+  });
+  return response.data;
+};
+
+/**
+ * Update student information
+ * @param {string} regNo - The student registration number
+ * @param {Object} data - Updated student data
+ */
+export const updateStudent = async (regNo, data) => {
+  const response = await api.put(`/admin/student/${regNo}`, data);
+  return response.data;
+};
+
+/**
+ * Delete student
+ * @param {string} regNo - The student registration number
+ */
+export const deleteStudent = async (regNo) => {
+  const response = await api.delete(`/admin/student/${regNo}`);
+  return response.data;
+};
+
+// ==================== Faculty APIs ====================
+
+/**
+ * Fetch all faculty with optional filters
+ */
+export const fetchFaculty = async (filters = {}) => {
+  const response = await api.get("/admin/faculty", { params: filters });
+  if (response.data.success) {
+    return {
+      success: true,
+      count: response.data.count,
+      faculty: response.data.data.map(adaptFaculty),
+    };
+  }
+  return response.data;
+};
+
+/**
+ * Create faculty
+ */
+export const createFaculty = async (facultyData) => {
+  const response = await api.post("/admin/faculty", facultyData);
+  return response.data;
+};
+
+/**
+ * Bulk create faculty
+ */
+export const bulkCreateFaculty = async (facultyList) => {
+  const response = await api.post("/admin/faculty/bulk", { facultyList });
+  return response.data;
+};
+
+/**
+ * Update faculty
+ */
+export const updateFaculty = async (employeeId, data) => {
+  const response = await api.put(`/admin/faculty/${employeeId}`, data);
+  return response.data;
+};
+
+/**
+ * Delete faculty
+ */
+export const deleteFaculty = async (employeeId) => {
+  const response = await api.delete(`/admin/faculty/${employeeId}`);
+  return response.data;
+};
+
+// ==================== Panel APIs ====================
+
+/**
+ * Fetch all panels
+ */
+export const fetchPanels = async (filters = {}) => {
+  const response = await api.get("/admin/panels", { params: filters });
+  if (response.data.success) {
+    return {
+      success: true,
+      panels: response.data.data.map(adaptPanel),
+    };
+  }
+  return response.data;
+};
+
+/**
+ * Create panel manually
+ */
+export const createPanel = async (panelData) => {
+  const response = await api.post("/admin/panels", panelData);
+  return response.data;
+};
+
+/**
+ * Auto-create panels
+ */
+export const autoCreatePanels = async (departments, school, academicYear) => {
+  const response = await api.post("/admin/panels/auto-create", {
+    departments,
+    school,
+    academicYear,
+  });
+  return response.data;
+};
+
+/**
+ * Update panel
+ */
+export const updatePanel = async (panelId, data) => {
+  const response = await api.put(`/admin/panels/${panelId}`, data);
+  return response.data;
+};
+
+/**
+ * Delete panel
+ */
+export const deletePanel = async (panelId) => {
+  const response = await api.delete(`/admin/panels/${panelId}`);
+  return response.data;
+};
+
+/**
+ * Assign panel to project
+ */
+export const assignPanelToProject = async (panelId, projectId) => {
+  const response = await api.post("/admin/panels/assign", {
+    panelId,
+    projectId,
+  });
+  return response.data;
+};
+
+/**
+ * Auto-assign panels to projects
+ */
+export const autoAssignPanels = async (academicYear, school, department) => {
+  const response = await api.post("/admin/panels/auto-assign", {
+    academicYear,
+    school,
+    department,
+  });
+  return response.data;
+};
+
+// ==================== Project APIs ====================
+
+/**
+ * Fetch all projects
+ */
+export const fetchProjects = async (filters = {}) => {
+  const response = await api.get("/admin/projects", { params: filters });
+  if (response.data.success) {
+    return {
+      success: true,
+      projects: response.data.data.map(adaptProject),
+    };
+  }
+  return response.data;
+};
+
+/**
+ * Create a single project
+ * Note: Uses coordinator endpoint as admin doesn't have separate project creation endpoint
+ */
+export const createProject = async (projectData) => {
+  try {
+    // Transform field names for backend
+    const payload = {
+      name: projectData.name,
+      students: projectData.teamMembers || [],
+      guideFacultyEmpId: projectData.guideFacultyEmpId,
+      specialization: projectData.specialization || "",
+      type: projectData.type || "Capstone Project",
+      school: projectData.school,
+      department: projectData.programme || projectData.department, // Map programme to department for backend
+      academicYear: projectData.academicYear,
+    };
+
+    const response = await api.post("/coordinator/projects", payload);
+    return response.data;
+  } catch (error) {
+    console.error("Error creating project:", error);
+    throw error;
+  }
+};
+
+/**
+ * Bulk create projects
+ * Note: Uses coordinator endpoint as admin doesn't have separate project creation endpoint
+ */
+export const bulkCreateProjects = async (projectsList) => {
+  try {
+    // Transform each project's field names for backend
+    const projects = projectsList.map((project) => ({
+      name: project.name,
+      students: project.teamMembers || [],
+      guideFacultyEmpId: project.guideFacultyEmpId,
+      specialization: project.specialization || "",
+      type: project.type || "Capstone Project",
+      school: project.school,
+      department: project.programme || project.department, // Map programme to department for backend
+      academicYear: project.academicYear,
+    }));
+
+    const response = await api.post("/coordinator/projects/bulk", { projects });
+    return response.data;
+  } catch (error) {
+    console.error("Error bulk creating projects:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get all guides with their projects
+ */
+export const fetchGuidesWithProjects = async (filters = {}) => {
+  const response = await api.get("/admin/projects/guides", { params: filters });
+  return response.data;
+};
+
+/**
+ * Get all panels with their projects
+ */
+export const fetchPanelsWithProjects = async (filters = {}) => {
+  const response = await api.get("/admin/projects/panels", { params: filters });
+  return response.data;
+};
+
+/**
+ * Mark project as best project
+ */
+export const markAsBestProject = async (projectId, isBest) => {
+  const response = await api.patch(
+    `/admin/projects/${projectId}/best-project`,
+    {
+      bestProject: isBest,
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Get marks for a specific project (all students)
+ */
+export const fetchProjectMarks = async (projectId) => {
+  try {
+    const response = await api.get(`/admin/reports/marks`, {
+      params: { projectId },
+    });
+
+    if (response.data.success) {
+      // Transform marks data into a format suitable for the modal
+      const marksByStudent = {};
+
+      response.data.data?.forEach((studentData) => {
+        const regNo = studentData.student?.regNo;
+        if (regNo) {
+          marksByStudent[regNo] =
+            studentData.marks?.map((mark) => ({
+              reviewName: mark.reviewType || "Review",
+              facultyType: mark.facultyType,
+              components: mark.componentMarks || [],
+              totalMarks: mark.totalMarks || 0,
+              maxTotalMarks: mark.maxTotalMarks || 0,
+              isSubmitted: mark.isSubmitted || false,
+            })) || [];
+        }
+      });
+
+      return { success: true, marksByStudent };
+    }
+
+    return { success: false, marksByStudent: {} };
+  } catch (error) {
+    console.error("Error fetching project marks:", error);
+    return { success: false, marksByStudent: {} };
+  }
+};
+
+// ==================== Request Management APIs ====================
+
+/**
+ * Fetch all faculty requests
+ */
+export const fetchRequests = async (filters = {}) => {
+  const response = await api.get("/admin/requests", { params: filters });
+  return response.data;
+};
+
+/**
+ * Update request status (approve/reject)
+ */
+export const updateRequestStatus = async (
+  requestId,
+  status,
+  remarks = "",
+  newDeadline = null
+) => {
+  const response = await api.put(`/admin/requests/${requestId}/status`, {
+    status,
+    remarks,
+    newDeadline,
+  });
+  return response.data;
+};
+
+// ==================== Broadcast APIs ====================
+
+/**
+ * Fetch broadcast messages
+ */
+export const fetchBroadcasts = async (filters = {}) => {
+  const response = await api.get("/admin/broadcasts", { params: filters });
+  return response.data;
+};
+
+/**
+ * Create broadcast message
+ */
+export const createBroadcast = async (
+  message,
+  expiresAt,
+  targetSchools = [],
+  targetDepartments = []
+) => {
+  const response = await api.post("/admin/broadcasts", {
+    message,
+    expiresAt,
+    targetSchools,
+    targetDepartments,
+  });
+  return response.data;
+};
+
+/**
+ * Update broadcast message
+ */
+export const updateBroadcast = async (broadcastId, data) => {
+  const response = await api.put(`/admin/broadcasts/${broadcastId}`, data);
+  return response.data;
+};
+
+/**
+ * Delete broadcast message
+ */
+export const deleteBroadcast = async (broadcastId) => {
+  const response = await api.delete(`/admin/broadcasts/${broadcastId}`);
+  return response.data;
+};
+
+// ==================== Report APIs ====================
+
+/**
+ * Get overview report
+ */
+export const fetchOverviewReport = async (academicYear, school, department) => {
+  const response = await api.get("/admin/reports/overview", {
+    params: { academicYear, school, department },
+  });
+  return response.data;
+};
+
+/**
+ * Get projects report
+ */
+export const fetchProjectsReport = async (academicYear, school, department) => {
+  const response = await api.get("/admin/reports/projects", {
+    params: { academicYear, school, department },
+  });
+  return response.data;
+};
+
+/**
+ * Get marks report
+ */
+export const fetchMarksReport = async (academicYear, school, department) => {
+  const response = await api.get("/admin/reports/marks", {
+    params: { academicYear, school, department },
+  });
+  return response.data;
+};
+
+/**
+ * Get faculty workload report
+ */
+export const fetchFacultyWorkloadReport = async (
+  academicYear,
+  school,
+  department
+) => {
+  const response = await api.get("/admin/reports/faculty-workload", {
+    params: { academicYear, school, department },
+  });
+  return response.data;
+};
+
+/**
+ * Get student performance report
+ */
+export const fetchStudentPerformanceReport = async (
+  academicYear,
+  school,
+  department
+) => {
+  const response = await api.get("/admin/reports/student-performance", {
+    params: { academicYear, school, department },
+  });
+  return response.data;
+};
+
+// ==================== Project Coordinator APIs ====================
+
+/**
+ * Get all project coordinators
+ */
+export const fetchProjectCoordinators = async (filters = {}) => {
+  const response = await api.get("/admin/project-coordinators", {
+    params: filters,
+  });
+  return response.data;
+};
+
+/**
+ * Assign project coordinator
+ */
+export const assignProjectCoordinator = async (
+  facultyId,
+  academicYear,
+  school,
+  department,
+  isPrimary = false,
+  permissions = null
+) => {
+  const response = await api.post("/admin/project-coordinators", {
+    facultyId,
+    academicYear,
+    school,
+    department,
+    isPrimary,
+    permissions,
+  });
+  return response.data;
+};
+
+/**
+ * Update project coordinator
+ */
+export const updateProjectCoordinator = async (coordinatorId, data) => {
+  const response = await api.put(
+    `/admin/project-coordinators/${coordinatorId}`,
+    data
+  );
+  return response.data;
+};
+
+/**
+ * Update coordinator permissions
+ */
+export const updateCoordinatorPermissions = async (
+  coordinatorId,
+  permissions
+) => {
+  const response = await api.patch(
+    `/admin/project-coordinators/${coordinatorId}/permissions`,
+    {
+      permissions,
+    }
+  );
+  return response.data;
+};
+
+/**
+ * Remove project coordinator
+ */
+export const removeProjectCoordinator = async (coordinatorId) => {
+  const response = await api.delete(
+    `/admin/project-coordinators/${coordinatorId}`
+  );
+  return response.data;
+};
+
+// ==================== Marking Schema APIs ====================
+
+/**
+ * Get marking schema
+ */
+export const fetchMarkingSchema = async (academicYear, school, department) => {
+  const response = await api.get("/admin/marking-schema", {
+    params: { academicYear, school, department },
+  });
+  return response.data;
+};
+
+/**
+ * Create or update marking schema
+ */
+export const saveMarkingSchema = async (schemaData) => {
+  const response = await api.post("/admin/marking-schema", schemaData);
+  return response.data;
+};
+
+/**
+ * Update marking schema
+ */
+export const updateMarkingSchema = async (schemaId, data) => {
+  const response = await api.put(`/admin/marking-schema/${schemaId}`, data);
+  return response.data;
+};
+
+// ==================== Department Config & Feature Locks ====================
+
+/**
+ * Get department configuration
+ */
+export const fetchDepartmentConfig = async (
+  academicYear,
+  school,
+  department
+) => {
+  const response = await api.get("/admin/department-config", {
+    params: { academicYear, school, department },
+  });
+  return response.data;
+};
+
+/**
+ * Save department configuration (Create or Update)
+ * @param {Object} configData - { academicYear, school, program, minTeamSize, maxTeamSize, ... }
+ */
+export const saveDepartmentConfig = async (configData) => {
+  let existingId = null;
+
+  // 1. Check if configuration already exists
+  try {
+    const existing = await fetchDepartmentConfig(
+      configData.academicYear,
+      configData.school,
+      configData.program
+    );
+
+    if (existing.success && existing.data) {
+      existingId = existing.data._id;
+    }
+  } catch (error) {
+    // Ignore 404s (not found), rethrow others
+    if (error.response && error.response.status !== 404) {
+      throw error;
+    }
+  }
+
+  // 2. Update or Create based on existence
+  if (existingId) {
+    // Update existing
+    const response = await updateDepartmentConfig(existingId, {
+      ...configData,
+      department: configData.program, // Map program to department
+    });
+    return response;
+  } else {
+    // Create new
+    const response = await createDepartmentConfig(
+      configData.academicYear,
+      configData.school,
+      configData.program, // Pass as department arg
+      configData
+    );
+    return response;
+  }
+};
+
+/**
+ * Create department configuration
+ */
+export const createDepartmentConfig = async (
+  academicYear,
+  school,
+  department,
+  config
+) => {
+  const response = await api.post("/admin/department-config", {
+    academicYear,
+    school,
+    department,
+    ...config,
+  });
+  return response.data;
+};
+
+/**
+ * Update department configuration
+ */
+export const updateDepartmentConfig = async (configId, updates) => {
+  const response = await api.put(
+    `/admin/department-config/${configId}`,
+    updates
+  );
+  return response.data;
+};
+
+/**
+ * Update feature lock (scheduler)
+ */
+export const updateFeatureLock = async (configId, featureLocks) => {
+  const response = await api.patch(
+    `/admin/department-config/${configId}/feature-lock`,
+    {
+      featureLocks,
+    }
+  );
+  return response.data;
+};
+
+// Export all as default
+export default {
+  // Master Data
+  fetchMasterData,
+  createSchool,
+  createDepartment,
+  createAcademicYear,
+
+  // Students
+  fetchStudents,
+  fetchStudentDetails,
+  createStudent,
+  bulkUploadStudents,
+  updateStudent,
+  deleteStudent,
+
+  // Faculty
+  fetchFaculty,
+  createFaculty,
+  bulkCreateFaculty,
+  updateFaculty,
+  deleteFaculty,
+
+  // Panels
+  fetchPanels,
+  createPanel,
+  autoCreatePanels,
+  updatePanel,
+  deletePanel,
+  assignPanelToProject,
+  autoAssignPanels,
+
+  // Projects
+  fetchProjects,
+  createProject,
+  bulkCreateProjects,
+  fetchGuidesWithProjects,
+  fetchPanelsWithProjects,
+  markAsBestProject,
+
+  // Requests
+  fetchRequests,
+  updateRequestStatus,
+
+  // Broadcasts
+  fetchBroadcasts,
+  createBroadcast,
+  updateBroadcast,
+  deleteBroadcast,
+
+  // Reports
+  fetchOverviewReport,
+  fetchProjectsReport,
+  fetchMarksReport,
+  fetchFacultyWorkloadReport,
+  fetchStudentPerformanceReport,
+
+  // Project Coordinators
+  fetchProjectCoordinators,
+  assignProjectCoordinator,
+  updateProjectCoordinator,
+  updateCoordinatorPermissions,
+  removeProjectCoordinator,
+
+  // Marking Schema
+  fetchMarkingSchema,
+  saveMarkingSchema,
+  updateMarkingSchema,
+
+  // Department Config & Feature Locks
+  fetchDepartmentConfig,
+  createDepartmentConfig,
+  updateDepartmentConfig,
+  saveDepartmentConfig,
+  updateFeatureLock,
+  updateFeatureLock,
+};
