@@ -6,7 +6,11 @@ import { AcademicCapIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { fetchMasterData } from "../../services/adminApi";
 import { useToast } from "../../../../shared/hooks/useToast";
 
-const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
+const AcademicFilterSelector = ({
+  onFilterComplete,
+  className = "",
+  showYear = true,
+}) => {
   const [loading, setLoading] = useState(false);
   const [masterData, setMasterData] = useState(null);
   const { showToast } = useToast();
@@ -80,19 +84,23 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         masterData.departments
           ?.filter((d) => d.isActive !== false && d.school === filters.school)
           ?.map((d) => ({
-            value: d.name,
+            value: d.code || d.name, // Use code if available
             label: d.name,
+            name: d.name,
+            code: d.code,
           })) || [];
 
       const progPrograms =
         masterData.programs
           ?.filter((p) => p.isActive !== false && p.school === filters.school)
           ?.map((p) => ({
-            value: p.name,
+            value: p.code || p.name, // Use code if available
             label: p.name,
+            name: p.name,
+            code: p.code,
           })) || [];
 
-      // Merge and deduplicate by value (name)
+      // Merge and deduplicate by value (code)
       const allPrograms = [...deptPrograms, ...progPrograms];
       const uniquePrograms = Array.from(
         new Map(allPrograms.map((item) => [item.value, item])).values()
@@ -119,21 +127,19 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
 
   // Notify parent when all filters are selected
   useEffect(() => {
-    if (filters.school && filters.program && filters.year) {
-      // Find school name from code for the callback
-      const selectedSchool = masterData?.schools?.find(
-        (s) => s.code === filters.school
-      );
+    const isComplete =
+      filters.school && filters.program && (!showYear || filters.year);
 
+    if (isComplete) {
       onFilterComplete({
-        school: selectedSchool?.name || filters.school, // Pass school name
+        school: filters.school, // Pass school code (value of the select)
         program: filters.program, // Backend uses 'program' field
         department: filters.program, // Keep for backward compatibility
-        academicYear: filters.year,
+        academicYear: showYear ? filters.year : null,
         programme: filters.program, // Also include as programme for clarity
       });
     }
-  }, [filters, onFilterComplete, masterData]);
+  }, [filters, onFilterComplete, showYear]);
 
   const handleChange = (key, value) => {
     const newFilters = { ...filters, [key]: value };
@@ -155,15 +161,19 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
       options: options.programs,
       enabled: !!filters.school,
     },
-    {
+  ];
+
+  if (showYear) {
+    steps.push({
       key: "year",
       label: "Academic Year",
       options: options.years,
       enabled: !!filters.school,
-    },
-  ];
+    });
+  }
 
   const allSelected = steps.every((step) => filters[step.key]);
+  const totalSteps = steps.length;
   const completedSteps = steps.filter((step) => filters[step.key]).length;
 
   return (
@@ -178,12 +188,12 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-blue-600 transition-all duration-500"
-                style={{ width: `${(completedSteps / 3) * 100}%` }}
+                style={{ width: `${(completedSteps / totalSteps) * 100}%` }}
               />
             </div>
           </div>
           <span className="text-xs font-semibold text-gray-600">
-            {completedSteps}/3
+            {completedSteps}/{totalSteps}
           </span>
         </div>
 
@@ -197,7 +207,10 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         )}
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+      <div
+        className={`grid grid-cols-1 md:grid-cols-${showYear ? "3" : "2"
+          } gap-3`}
+      >
         {steps.map((step) => (
           <Select
             key={step.key}

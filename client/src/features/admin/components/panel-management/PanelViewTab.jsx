@@ -45,7 +45,7 @@ const PanelViewTab = () => {
 
       const response = await fetchPanels({
         school: filters.school,
-        department: filters.department,
+        program: filters.program,
         academicYear: filters.academicYear,
       });
 

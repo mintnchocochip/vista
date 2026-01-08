@@ -48,8 +48,8 @@ const ProjectPanelAssignment = () => {
 
       const params = {
         school: selectedFilters.school,
-        department: selectedFilters.programme, // mapped from programme in filter
-        academicYear: selectedFilters.year,
+        program: selectedFilters.program,
+        academicYear: selectedFilters.academicYear,
       };
 
       const [projectsData, panelsData] = await Promise.all([
@@ -113,14 +113,13 @@ const ProjectPanelAssignment = () => {
 
       const response = await autoAssignPanels({
         school: filters.school,
-        department: filters.programme,
-        academicYear: filters.year,
+        program: filters.program,
+        academicYear: filters.academicYear,
       });
 
       if (response.success) {
         showToast(
-          `Successfully assigned ${
-            response.assignedCount || 0
+          `Successfully assigned ${response.assignedCount || 0
           } projects to panels`,
           "success"
         );
@@ -297,11 +296,10 @@ const ProjectPanelAssignment = () => {
                   <button
                     key={project._id}
                     onClick={() => setSelectedProject(project)}
-                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                      selectedProject?._id === project._id
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${selectedProject?._id === project._id
                         ? "border-blue-500 bg-blue-50"
                         : "border-gray-200 bg-white hover:border-blue-300"
-                    }`}
+                      }`}
                   >
                     <p className="font-medium text-gray-900">{project.name}</p>
                     <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -336,11 +334,10 @@ const ProjectPanelAssignment = () => {
                   <button
                     key={panel._id}
                     onClick={() => setSelectedPanel(panel)}
-                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${
-                      selectedPanel?._id === panel._id
+                    className={`w-full text-left p-3 rounded-lg border-2 transition-all ${selectedPanel?._id === panel._id
                         ? "border-green-500 bg-green-50"
                         : "border-gray-200 bg-white hover:border-green-300"
-                    }`}
+                      }`}
                   >
                     <p className="font-medium text-gray-900">
                       {getPanelName(panel)}

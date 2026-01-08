@@ -28,8 +28,8 @@ const adaptStudent = (backendStudent, project = null) => {
     email: backendStudent.emailId,
     emailId: backendStudent.emailId,
     school: backendStudent.school,
-    programme: backendStudent.department, // Backend uses 'department', frontend uses 'programme'
-    department: backendStudent.department, // Keep for compatibility
+    programme: backendStudent.program, // Backend uses 'program', frontend uses 'programme'
+    department: backendStudent.program, // Keep for compatibility
     academicYear: backendStudent.academicYear,
     PAT: backendStudent.PAT || false,
     isActive: backendStudent.isActive !== false,
@@ -44,11 +44,11 @@ const adaptStudent = (backendStudent, project = null) => {
     // Guide info
     if (project.guideFaculty) {
       adapted.guide =
-        typeof project.guideFaculty === "object"
+        project.guideFaculty && typeof project.guideFaculty === "object"
           ? project.guideFaculty.name
           : null;
       adapted.guideId =
-        typeof project.guideFaculty === "object"
+        project.guideFaculty && typeof project.guideFaculty === "object"
           ? project.guideFaculty._id
           : project.guideFaculty;
     }
@@ -56,20 +56,20 @@ const adaptStudent = (backendStudent, project = null) => {
     // Panel info
     if (project.panel) {
       adapted.panelId =
-        typeof project.panel === "object" ? project.panel._id : project.panel;
+        project.panel && typeof project.panel === "object" ? project.panel._id : project.panel;
     }
 
     // Team members (other students)
     adapted.teammates = project.students
       ? project.students
-          .filter((s) => s._id?.toString() !== backendStudent._id?.toString())
-          .map((s) => ({
-            _id: s._id,
-            id: s._id,
-            name: s.name,
-            regNo: s.regNo,
-            email: s.emailId,
-          }))
+        .filter((s) => s._id?.toString() !== backendStudent._id?.toString())
+        .map((s) => ({
+          _id: s._id,
+          id: s._id,
+          name: s.name,
+          regNo: s.regNo,
+          email: s.emailId,
+        }))
       : [];
 
     adapted.teamSize = project.teamSize || adapted.teammates.length + 1;
@@ -81,8 +81,8 @@ const adaptStudent = (backendStudent, project = null) => {
     adapted.pptStatus = pptApproval.approved
       ? "approved"
       : pptApproval.locked
-      ? "rejected"
-      : "pending";
+        ? "rejected"
+        : "pending";
     adapted.pptApprovedAt = pptApproval.approvedAt;
   } else {
     adapted.pptStatus = "pending";
@@ -104,8 +104,8 @@ const adaptFaculty = (backendFaculty) => {
     email: backendFaculty.emailId,
     emailId: backendFaculty.emailId,
     school: backendFaculty.school,
-    programme: backendFaculty.department, // Backend uses 'department', frontend uses 'programme'
-    department: backendFaculty.department, // Keep for compatibility
+    programme: backendFaculty.program, // Backend uses 'program', frontend uses 'programme'
+    department: backendFaculty.program, // Keep for compatibility
     role: backendFaculty.role,
     specialization: backendFaculty.specialization || [],
     phoneNumber: backendFaculty.phoneNumber,
@@ -131,8 +131,8 @@ const adaptPanel = (backendPanel) => {
       })) || [],
     academicYear: backendPanel.academicYear,
     school: backendPanel.school,
-    programme: backendPanel.department, // Backend uses 'department', frontend uses 'programme'
-    department: backendPanel.department, // Keep for compatibility
+    programme: backendPanel.program, // Backend uses 'program', frontend uses 'programme'
+    department: backendPanel.program, // Keep for compatibility
     isActive: backendPanel.isActive !== false,
     assignedProjects: backendPanel.assignedProjects || 0,
     createdAt: backendPanel.createdAt,
@@ -161,32 +161,30 @@ const adaptProject = (backendProject) => {
     type: backendProject.type,
     academicYear: backendProject.academicYear,
     school: backendProject.school,
-    programme: backendProject.department, // Backend uses 'department', frontend uses 'programme'
-    department: backendProject.department, // Keep for compatibility
+    programme: backendProject.program, // Backend uses 'program', frontend uses 'programme'
+    department: backendProject.program, // Keep for compatibility
     specialization: backendProject.specialization,
     teamSize: backendProject.teamSize || teamMembers.length,
     status: backendProject.status || "active",
     bestProject: backendProject.bestProject || false,
-    guide: backendProject.guideFaculty
-      ? {
-          _id:
-            typeof backendProject.guideFaculty === "object"
-              ? backendProject.guideFaculty._id
-              : backendProject.guideFaculty,
-          name: backendProject.guideFaculty?.name || "Not Assigned",
-          employeeId: backendProject.guideFaculty?.employeeId || "",
-          email: backendProject.guideFaculty?.emailId || "",
+    guide:
+      backendProject.guideFaculty && typeof backendProject.guideFaculty === "object"
+        ? {
+          _id: backendProject.guideFaculty._id,
+          name: backendProject.guideFaculty.name || "Not Assigned",
+          employeeId: backendProject.guideFaculty.employeeId || "",
+          email: backendProject.guideFaculty.emailId || "",
         }
-      : null,
+        : null,
     guideId:
-      typeof backendProject.guideFaculty === "object"
+      backendProject.guideFaculty && typeof backendProject.guideFaculty === "object"
         ? backendProject.guideFaculty._id
         : backendProject.guideFaculty,
     students: teamMembers,
     teamMembers: teamMembers, // Alias for compatibility
     panel: backendProject.panel ? adaptPanel(backendProject.panel) : null,
     panelId:
-      typeof backendProject.panel === "object"
+      backendProject.panel && typeof backendProject.panel === "object"
         ? backendProject.panel._id
         : backendProject.panel,
     createdAt: backendProject.createdAt,
@@ -321,7 +319,13 @@ export const deleteProgram = async (id) => {
  * @param {Object} filters - { academicYear, school, department, regNo, name }
  */
 export const fetchStudents = async (filters = {}) => {
-  const response = await api.get("/admin/students", { params: filters });
+  // Map department to program for backend filters
+  const params = { ...filters };
+  if (params.department) {
+    params.program = params.department;
+    delete params.department;
+  }
+  const response = await api.get("/admin/students", { params });
   if (response.data.success) {
     // Return adapted students with project info if available
     return {
@@ -355,7 +359,7 @@ export const createStudent = async (studentData) => {
   // Map programme to department for backend
   const payload = {
     ...studentData,
-    department:
+    program:
       studentData.programme ||
       studentData.programmeId ||
       studentData.department,
@@ -373,7 +377,7 @@ export const bulkUploadStudents = async (students, school, programme) => {
     students,
     academicYear: students[0]?.yearId || students[0]?.academicYear,
     school,
-    department: programme, // Backend expects 'department' field
+    program: programme, // Backend expects 'program' field
   });
   return response.data;
 };
@@ -403,7 +407,14 @@ export const deleteStudent = async (regNo) => {
  * Fetch all faculty with optional filters
  */
 export const fetchFaculty = async (filters = {}) => {
-  const response = await api.get("/admin/faculty", { params: filters });
+  // Map department to program for backend filters
+  const params = { ...filters };
+  if (params.department) {
+    params.program = params.department;
+    delete params.department;
+  }
+
+  const response = await api.get("/admin/faculty", { params });
   if (response.data.success) {
     return {
       success: true,
@@ -418,7 +429,11 @@ export const fetchFaculty = async (filters = {}) => {
  * Create faculty
  */
 export const createFaculty = async (facultyData) => {
-  const response = await api.post("/admin/faculty", facultyData);
+  const payload = { ...facultyData };
+  if (payload.department) {
+    payload.program = payload.department;
+  }
+  const response = await api.post("/admin/faculty", payload);
   return response.data;
 };
 
@@ -426,7 +441,12 @@ export const createFaculty = async (facultyData) => {
  * Bulk create faculty
  */
 export const bulkCreateFaculty = async (facultyList) => {
-  const response = await api.post("/admin/faculty/bulk", { facultyList });
+  // Ensure program field is set for all faculty
+  const faculty = facultyList.map(f => ({
+    ...f,
+    program: f.program || f.department
+  }));
+  const response = await api.post("/admin/faculty/bulk", { facultyList: faculty });
   return response.data;
 };
 
@@ -434,7 +454,11 @@ export const bulkCreateFaculty = async (facultyList) => {
  * Update faculty
  */
 export const updateFaculty = async (employeeId, data) => {
-  const response = await api.put(`/admin/faculty/${employeeId}`, data);
+  const payload = { ...data };
+  if (payload.department) {
+    payload.program = payload.department;
+  }
+  const response = await api.put(`/admin/faculty/${employeeId}`, payload);
   return response.data;
 };
 
@@ -452,7 +476,13 @@ export const deleteFaculty = async (employeeId) => {
  * Fetch all panels
  */
 export const fetchPanels = async (filters = {}) => {
-  const response = await api.get("/admin/panels", { params: filters });
+  // Map department to program for backend filters
+  const params = { ...filters };
+  if (params.department) {
+    params.program = params.department;
+    delete params.department;
+  }
+  const response = await api.get("/admin/panels", { params });
   if (response.data.success) {
     return {
       success: true,
@@ -473,11 +503,11 @@ export const createPanel = async (panelData) => {
 /**
  * Auto-create panels
  */
-export const autoCreatePanels = async (departments, school, academicYear) => {
+export const autoCreatePanels = async (payload) => {
+  // payload: { programs, school, academicYear, panelSize, facultyList }
   const response = await api.post("/admin/panels/auto-create", {
-    departments,
-    school,
-    academicYear,
+    ...payload,
+    program: payload.programs || payload.departments, // Ensure backend compat
   });
   return response.data;
 };
@@ -501,7 +531,7 @@ export const deletePanel = async (panelId) => {
 /**
  * Assign panel to project
  */
-export const assignPanelToProject = async (panelId, projectId) => {
+export const assignPanelToProject = async ({ panelId, projectId }) => {
   const response = await api.post("/admin/panels/assign", {
     panelId,
     projectId,
@@ -512,11 +542,17 @@ export const assignPanelToProject = async (panelId, projectId) => {
 /**
  * Auto-assign panels to projects
  */
-export const autoAssignPanels = async (academicYear, school, department) => {
+export const autoAssignPanels = async ({
+  academicYear,
+  school,
+  program,
+  department,
+}) => {
   const response = await api.post("/admin/panels/auto-assign", {
     academicYear,
     school,
-    department,
+    program: program || department,
+    department: program || department,
   });
   return response.data;
 };
@@ -527,7 +563,13 @@ export const autoAssignPanels = async (academicYear, school, department) => {
  * Fetch all projects
  */
 export const fetchProjects = async (filters = {}) => {
-  const response = await api.get("/admin/projects", { params: filters });
+  // Map department to program for backend filters
+  const params = { ...filters };
+  if (params.department) {
+    params.program = params.department;
+    delete params.department;
+  }
+  const response = await api.get("/admin/projects", { params });
   if (response.data.success) {
     return {
       success: true,
@@ -550,7 +592,8 @@ export const createProject = async (projectData) => {
       specialization: projectData.specialization || "",
       type: projectData.type || "Capstone Project",
       school: projectData.school,
-      department: projectData.programme || projectData.department, // Map programme to department for backend
+      program: projectData.programme || projectData.department, // Map programme to program for backend
+      department: projectData.programme || projectData.department, // Keep for robustness
       academicYear: projectData.academicYear,
       description: projectData.description,
     };
@@ -576,7 +619,8 @@ export const bulkCreateProjects = async (projectsList) => {
       specialization: project.specialization || "",
       type: project.type || "Capstone Project",
       school: project.school,
-      department: project.programme || project.department, // Map programme to department for backend
+      program: project.programme || project.department, // Map programme to program for backend
+      department: project.programme || project.department,
       academicYear: project.academicYear,
       description: project.description,
     }));
@@ -734,7 +778,7 @@ export const deleteBroadcast = async (broadcastId) => {
  */
 export const fetchOverviewReport = async (academicYear, school, department) => {
   const response = await api.get("/admin/reports/overview", {
-    params: { academicYear, school, department },
+    params: { academicYear, school, program: department },
   });
   return response.data;
 };
@@ -744,7 +788,7 @@ export const fetchOverviewReport = async (academicYear, school, department) => {
  */
 export const fetchProjectsReport = async (academicYear, school, department) => {
   const response = await api.get("/admin/reports/projects", {
-    params: { academicYear, school, department },
+    params: { academicYear, school, program: department },
   });
   return response.data;
 };
@@ -754,7 +798,7 @@ export const fetchProjectsReport = async (academicYear, school, department) => {
  */
 export const fetchMarksReport = async (academicYear, school, department) => {
   const response = await api.get("/admin/reports/marks", {
-    params: { academicYear, school, department },
+    params: { academicYear, school, program: department },
   });
   return response.data;
 };
@@ -768,7 +812,7 @@ export const fetchFacultyWorkloadReport = async (
   department
 ) => {
   const response = await api.get("/admin/reports/faculty-workload", {
-    params: { academicYear, school, department },
+    params: { academicYear, school, program: department },
   });
   return response.data;
 };
@@ -782,7 +826,7 @@ export const fetchStudentPerformanceReport = async (
   department
 ) => {
   const response = await api.get("/admin/reports/student-performance", {
-    params: { academicYear, school, department },
+    params: { academicYear, school, program: department },
   });
   return response.data;
 };
@@ -865,7 +909,7 @@ export const removeProjectCoordinator = async (coordinatorId) => {
  */
 export const fetchMarkingSchema = async (academicYear, school, department) => {
   const response = await api.get("/admin/marking-schema", {
-    params: { academicYear, school, department },
+    params: { academicYear, school, program: department },
   });
   return response.data;
 };

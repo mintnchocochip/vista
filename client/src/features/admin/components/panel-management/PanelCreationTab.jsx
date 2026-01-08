@@ -132,8 +132,7 @@ const PanelCreation = () => {
 
       if (missingIds.length > 0) {
         showToast(
-          `Warning: ${
-            missingIds.length
+          `Warning: ${missingIds.length
           } faculty IDs not found: ${missingIds.join(", ")}`,
           "warning"
         );
@@ -186,10 +185,10 @@ const PanelCreation = () => {
         memberEmployeeIds: manualForm.selectedFaculties,
         panelName: manualForm.panelName || `Panel ${createdPanels.length + 1}`,
         school: filters.school,
-        department: filters.programme,
-        academicYear: filters.year,
+        program: filters.program,
+        academicYear: filters.academicYear,
         semester: filters.semester,
-        panelType: "regular",
+        panelType: manualForm.panelType || "regular",
       };
 
       const result = await createPanel(payload);
@@ -220,10 +219,9 @@ const PanelCreation = () => {
       setIsCreatingAuto(true);
 
       const payload = {
-        departments: [filters.programme],
+        programs: [filters.program],
         school: filters.school,
-        academicYear: filters.year,
-        panelSize: autoForm.panelSize,
+        academicYear: filters.academicYear,
         panelSize: autoForm.panelSize,
         facultyList: facultyList.map((f) => f.employeeId),
       };
@@ -310,8 +308,8 @@ const PanelCreation = () => {
       const enrichedData = panelData.map((panel) => ({
         ...panel,
         school: filters.school,
-        department: filters.programme,
-        academicYear: filters.year,
+        program: filters.program,
+        academicYear: filters.academicYear,
         semester: filters.semester,
       }));
 

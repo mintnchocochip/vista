@@ -15,7 +15,7 @@ export class FacultyService {
 
     if (
       !data.phoneNumber ||
-      !/^(\+91[- ]?)?[6-9]\d{9}$/.test(data.phoneNumber)
+      !/^(\+91[- ]?)?[6-9]\d{9}$/.test(data.phoneNumber.toString().trim())
     ) {
       errors.push("Invalid Indian phone number format.");
     }
@@ -53,7 +53,7 @@ export class FacultyService {
       $or: [
         { emailId: emailId?.trim().toLowerCase() },
         { employeeId: employeeId?.trim().toUpperCase() },
-        { phoneNumber: phoneNumber?.trim() },
+        { phoneNumber: phoneNumber?.toString().trim() },
       ],
     };
 
@@ -97,7 +97,7 @@ export class FacultyService {
       emailId: data.emailId.trim().toLowerCase(),
       password: hashedPassword,
       employeeId: data.employeeId.trim().toUpperCase(),
-      phoneNumber: data.phoneNumber.trim(),
+      phoneNumber: data.phoneNumber?.toString().trim(),
       role: data.role || "faculty",
       school: data.school.trim(),
       program: data.program ? data.program.trim() : undefined,
@@ -172,7 +172,7 @@ export class FacultyService {
 
     if (
       updates.phoneNumber &&
-      !/^(\+91[- ]?)?[6-9]\d{9}$/.test(updates.phoneNumber)
+      !/^(\+91[- ]?)?[6-9]\d{9}$/.test(updates.phoneNumber.toString().trim())
     ) {
       throw new Error("Invalid phone number format.");
     }

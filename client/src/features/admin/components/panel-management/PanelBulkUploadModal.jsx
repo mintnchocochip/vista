@@ -11,6 +11,18 @@ const PanelBulkUploadModal = ({ isOpen, onClose, filters }) => {
 
   // ...
 
+  const handleDataParsed = (data) => {
+    // Enrich with filters
+    const enriched = data.map((item) => ({
+      ...item,
+      school: filters.school,
+      program: filters.program,
+      academicYear: filters.academicYear,
+      semester: filters.semester,
+    }));
+    setParsedData(enriched);
+  };
+
   const handleUpload = async () => {
     if (!parsedData || parsedData.length === 0) {
       setUploadStatus({ type: "error", message: "No data to upload" });
@@ -136,13 +148,12 @@ const PanelBulkUploadModal = ({ isOpen, onClose, filters }) => {
         {/* Status Message */}
         {uploadStatus && (
           <div
-            className={`flex items-center space-x-2 p-3 rounded-lg ${
-              uploadStatus.type === "success"
+            className={`flex items-center space-x-2 p-3 rounded-lg ${uploadStatus.type === "success"
                 ? "bg-green-50 border border-green-200"
                 : uploadStatus.type === "error"
-                ? "bg-red-50 border border-red-200"
-                : "bg-blue-50 border border-blue-200"
-            }`}
+                  ? "bg-red-50 border border-red-200"
+                  : "bg-blue-50 border border-blue-200"
+              }`}
           >
             {uploadStatus.type === "success" ? (
               <CheckCircleIcon className="w-5 h-5 text-green-600" />
@@ -150,13 +161,12 @@ const PanelBulkUploadModal = ({ isOpen, onClose, filters }) => {
               <XCircleIcon className="w-5 h-5 text-red-600" />
             ) : null}
             <p
-              className={`text-sm ${
-                uploadStatus.type === "success"
+              className={`text-sm ${uploadStatus.type === "success"
                   ? "text-green-800"
                   : uploadStatus.type === "error"
-                  ? "text-red-800"
-                  : "text-blue-800"
-              }`}
+                    ? "text-red-800"
+                    : "text-blue-800"
+                }`}
             >
               {uploadStatus.message}
             </p>

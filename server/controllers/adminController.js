@@ -411,8 +411,8 @@ export async function getPanelSummary(req, res) {
     const avgFacultyPerPanel =
       totalPanels > 0
         ? (
-            panels.reduce((sum, p) => sum + p.members.length, 0) / totalPanels
-          ).toFixed(1)
+          panels.reduce((sum, p) => sum + p.members.length, 0) / totalPanels
+        ).toFixed(1)
         : 0;
 
     const avgProjectsPerPanel =
@@ -672,9 +672,8 @@ export async function markAsBestProject(req, res) {
 
     res.status(200).json({
       success: true,
-      message: `Project ${
-        project.bestProject ? "marked" : "unmarked"
-      } as best project.`,
+      message: `Project ${project.bestProject ? "marked" : "unmarked"
+        } as best project.`,
       data: { bestProject: project.bestProject },
     });
   } catch (error) {
@@ -704,8 +703,8 @@ export async function createProject(req, res) {
 
     const projectData = {
       name,
-      studentRegNos: students, // Service expects studentRegNos
-      guideEmpId: guideFacultyEmpId, // Service expects guideEmpId
+      students, // Service expects students array
+      guideFacultyEmpId, // Service expects guideFacultyEmpId
       school,
       program,
       academicYear,

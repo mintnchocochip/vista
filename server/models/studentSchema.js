@@ -5,6 +5,7 @@ const studentSchema = new mongoose.Schema(
     regNo: { type: String, required: true },
     name: { type: String, required: true },
     emailId: { type: String, required: true },
+    phoneNumber: { type: String },
 
     PAT: { type: Boolean, default: false },
 

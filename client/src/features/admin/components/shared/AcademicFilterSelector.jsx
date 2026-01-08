@@ -115,6 +115,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
 
       onFilterComplete({
         school: selectedSchool?.name || filters.school, // Pass school name
+        program: filters.program, // Add program field for consistency
         department: filters.program, // Backend uses 'department' field to store programme data
         academicYear: filters.year,
         programme: filters.program, // Also include as programme for clarity

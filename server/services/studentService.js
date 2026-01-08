@@ -16,7 +16,24 @@ export class StudentService {
     }
 
     // Process Maps to Objects
-    return this.processStudentData(student);
+    const processedStudent = this.processStudentData(student);
+
+    // Find active project for this student
+    const project = await Project.findOne({
+      students: student._id,
+      status: "active"
+    })
+      .populate("guideFaculty", "name")
+      .populate("panel", "panelName")
+      .lean();
+
+    // Add guide and panel details
+    return {
+      ...processedStudent,
+      guide: project?.guideFaculty?.name || "N/A",
+      panelMember: project?.panel?.panelName || "N/A",
+      projectTitle: project?.name || null
+    };
   }
 
   /**
@@ -40,7 +57,51 @@ export class StudentService {
 
     const students = await Student.find(query).sort({ regNo: 1 }).lean();
 
-    return students.map((student) => this.processStudentData(student));
+    // Get all student IDs
+    const studentIds = students.map(s => s._id);
+
+    // Find active projects for these students
+    const projects = await Project.find({
+      students: { $in: studentIds },
+      status: "active"
+    })
+      .populate("guideFaculty", "name")
+      .populate("panel", "panelName")
+      .lean();
+
+    // Create a map of studentId -> project details
+    const studentProjectMap = {};
+    projects.forEach(project => {
+      project.students.forEach(sId => {
+        const studentIdStr = sId.toString();
+        // Get teammates (exclude self)
+        const teammates = project.students
+          .filter(id => id.toString() !== studentIdStr)
+          .map(id => {
+            const teammate = students.find(s => s._id.toString() === id.toString());
+            return teammate ? { id: teammate._id, name: teammate.name } : null;
+          })
+          .filter(Boolean);
+
+        studentProjectMap[studentIdStr] = {
+          guide: project.guideFaculty?.name || "N/A",
+          panelMember: project.panel?.panelName || "N/A",
+          projectTitle: project.name || null,
+          teammates
+        };
+      });
+    });
+
+    return students.map((student) => {
+      const projectDetails = studentProjectMap[student._id.toString()] || {};
+      return {
+        ...this.processStudentData(student),
+        guide: projectDetails.guide || "N/A",
+        panelMember: projectDetails.panelMember || "N/A",
+        projectTitle: projectDetails.projectTitle,
+        teammates: projectDetails.teammates || []
+      };
+    });
   }
 
   /**

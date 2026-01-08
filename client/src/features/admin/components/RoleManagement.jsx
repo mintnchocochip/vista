@@ -77,7 +77,7 @@ const RoleManagement = ({ schools, programsBySchool, years }) => {
     setLoading(true);
     try {
       // Get year name
-      const yearObj = years.find((y) => y.id === parseInt(selectedYear));
+      const yearObj = years.find((y) => y.id == selectedYear);
       const schoolObj = schools.find((s) => s.code === selectedSchool);
       const programObj = programsBySchool[selectedSchool]?.find(
         (p) => p.code === selectedProgramme
@@ -182,25 +182,13 @@ const RoleManagement = ({ schools, programsBySchool, years }) => {
       return;
     }
 
-    const yearObj = years.find(
-      (y) => y.id === parseInt(selectedYear) || y.id == selectedYear
-    );
+    const yearObj = years.find((y) => y.id == selectedYear);
     const schoolObj = schools.find((s) => s.code === selectedSchool);
     const programObj = programsBySchool[selectedSchool]?.find(
       (p) => p.code === selectedProgramme
     );
 
-    console.log("Context Debug:", {
-      selectedYear,
-      selectedSchool,
-      selectedProgramme,
-      yearObj,
-      schoolObj,
-      programObj,
-      years,
-      schools,
-      programs: programsBySchool[selectedSchool],
-    });
+
 
     if (!yearObj || !schoolObj || !programObj) {
       showToast("Invalid context", "error");
@@ -519,20 +507,19 @@ const RoleManagement = ({ schools, programsBySchool, years }) => {
                       onClick={() =>
                         !isAssigned && toggleFacultySelection(faculty._id)
                       }
-                      className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer ${
-                        isAssigned
-                          ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-60"
-                          : isSelected
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-all cursor-pointer ${isAssigned
+                        ? "bg-gray-100 border-gray-300 cursor-not-allowed opacity-60"
+                        : isSelected
                           ? "bg-blue-50 border-blue-500 ring-2 ring-blue-200"
                           : "bg-white border-gray-200 hover:border-gray-300 hover:bg-gray-50"
-                      }`}
+                        }`}
                     >
                       <div className="flex items-center gap-3">
                         <input
                           type="checkbox"
                           checked={isSelected || isAssigned}
                           disabled={isAssigned}
-                          onChange={() => {}}
+                          onChange={() => { }}
                           className="w-4 h-4 text-blue-600 rounded border-gray-300"
                         />
                         <div>
