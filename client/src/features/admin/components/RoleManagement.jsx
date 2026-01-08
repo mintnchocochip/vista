@@ -16,6 +16,7 @@ import {
   fetchProjectCoordinators,
   assignProjectCoordinator,
   updateCoordinatorPermissions,
+  updateProjectCoordinator,
   removeProjectCoordinator,
   fetchFaculty,
 } from "../services/adminApi";
@@ -232,7 +233,7 @@ const RoleManagement = ({ schools, programsBySchool, years }) => {
   const handleSetMainCoordinator = async (coordinatorId) => {
     setLoading(true);
     try {
-      await updateCoordinatorPermissions(coordinatorId, {
+      await updateProjectCoordinator(coordinatorId, {
         isPrimary: true,
       });
 
