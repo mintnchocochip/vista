@@ -22,14 +22,14 @@ const DEFAULT_HISTORY_LIMIT = 25;
 
 const AdminBroadcasts = () => {
   const { showToast } = useToast();
-  
+
   // Options from database
   const [schoolOptions, setSchoolOptions] = useState([]);
   const [departmentOptions, setDepartmentOptions] = useState([]);
   const [yearOptions, setYearOptions] = useState([]);
   const [semesterOptions, setSemesterOptions] = useState([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
-  
+
   const [formData, setFormData] = useState({
     title: '',
     message: '',
@@ -50,9 +50,9 @@ const AdminBroadcasts = () => {
   const fetchOptions = useCallback(async () => {
     try {
       setOptionsLoading(true);
-      
+
       const masterData = await fetchMasterData();
-      
+
       if (masterData.success) {
         setSchoolOptions(masterData.schools?.map(s => s.name) || []);
         setDepartmentOptions(masterData.departments?.map(d => d.name) || []);
@@ -121,12 +121,12 @@ const AdminBroadcasts = () => {
   const fetchHistory = useCallback(async () => {
     try {
       setHistoryLoading(true);
-      
+
       const response = await apiFetchBroadcasts({
         limit: historyLimit,
         includeExpired
       });
-      
+
       if (response.success) {
         setHistory(response.data || []);
       } else {
@@ -150,7 +150,7 @@ const AdminBroadcasts = () => {
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-    
+
     if (!formData.message.trim()) {
       showToast('Message required', 'error');
       return;
@@ -232,7 +232,7 @@ const AdminBroadcasts = () => {
 
     try {
       const response = await apiDeleteBroadcast(broadcastId);
-      
+
       if (response.success) {
         showToast('Broadcast deleted', 'success');
         if (editingBroadcastId === broadcastId) {
@@ -260,10 +260,11 @@ const AdminBroadcasts = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
+
       <Navbar />
-      
-        {/* Admin Tabs */}
-        <AdminTabs />
+
+      {/* Admin Tabs */}
+      <AdminTabs />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Broadcast Form */}
         <BroadcastForm
