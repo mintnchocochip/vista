@@ -7,9 +7,9 @@ import { useToast } from '../../../../shared/hooks/useToast';
 import { CheckCircleIcon } from '@heroicons/react/24/outline';
 import RequestFilters from './requests/RequestFilters';
 import FacultyRequestCard from './requests/FacultyRequestCard';
-import { 
-  groupRequestsByFaculty, 
-  applyFilters 
+import {
+  groupRequestsByFaculty,
+  applyFilters
 } from './requests/requestUtils';
 import {
   fetchRequests as apiFetchRequests,
@@ -33,9 +33,30 @@ const RequestList = () => {
       try {
         setLoading(true);
         const response = await apiFetchRequests();
-        
+
         if (response.success) {
-          setRequests(response.data || []);
+          const flattenedRequests = (response.data || []).flatMap(group =>
+            group.requests.map(req => ({
+              id: req._id,
+              facultyId: group._id,
+              facultyName: group.name,
+              studentName: req.student?.name || 'Unknown',
+              category: req.facultyType,
+              projectTitle: req.project?.name || 'Unknown',
+              message: req.reason,
+              status: req.status,
+              date: req.createdAt,
+              school: group.school,
+              program: group.program,
+              // Keep original fields just in case
+              _id: req._id,
+              requestType: req.requestType,
+              reviewType: req.reviewType,
+              approvalReason: req.remarks || '', // Map remarks if available
+              rejectionReason: req.remarks || ''
+            }))
+          );
+          setRequests(flattenedRequests);
         } else {
           showToast(response.message || 'Failed to load requests', 'error');
         }
@@ -49,7 +70,7 @@ const RequestList = () => {
 
     loadRequests();
   }, [showToast]);
-  
+
   const [showApproveAllModal, setShowApproveAllModal] = useState(false);
   const [selectedFacultyId, setSelectedFacultyId] = useState(null);
   const [approvalReason, setApprovalReason] = useState('');
@@ -80,7 +101,7 @@ const RequestList = () => {
   const handleApproveRequest = async (requestId) => {
     try {
       const response = await apiUpdateRequestStatus(requestId, 'approved', 'Approved by admin');
-      
+
       if (response.success) {
         setRequests(prevRequests =>
           prevRequests.map(request =>
@@ -105,7 +126,7 @@ const RequestList = () => {
 
     try {
       const response = await apiUpdateRequestStatus(requestId, 'rejected', reason);
-      
+
       if (response.success) {
         setRequests(prevRequests =>
           prevRequests.map(request =>
@@ -136,17 +157,17 @@ const RequestList = () => {
     }
 
     setIsProcessing(true);
-    
+
     try {
       // Approve each request individually
       const requestIds = pendingRequestsForFaculty.map(r => r.id || r._id);
-      const approvePromises = requestIds.map(requestId => 
+      const approvePromises = requestIds.map(requestId =>
         apiUpdateRequestStatus(requestId, 'approved', approvalReason)
       );
-      
+
       const results = await Promise.allSettled(approvePromises);
       const successCount = results.filter(r => r.status === 'fulfilled' && r.value?.success).length;
-      
+
       if (successCount > 0) {
         setRequests(prevRequests =>
           prevRequests.map(request =>
@@ -155,14 +176,14 @@ const RequestList = () => {
               : request
           )
         );
-        
+
         const faculty = facultyGroups.find(f => f.id === selectedFacultyId);
-        
+
         showToast(
           `Successfully approved ${successCount} request${successCount !== 1 ? 's' : ''} for ${faculty?.name}`,
           'success'
         );
-        
+
         setShowApproveAllModal(false);
         setSelectedFacultyId(null);
         setApprovalReason('');

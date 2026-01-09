@@ -54,6 +54,7 @@ export class RequestService {
         project: req.project,
         reviewType: req.reviewType,
         requestType: req.requestType,
+        facultyType: req.facultyType,
         reason: req.reason,
         status: req.status,
         createdAt: req.createdAt,

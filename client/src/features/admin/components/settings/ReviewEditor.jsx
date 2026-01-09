@@ -58,9 +58,15 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
         updatedComponents[index].name = selected.name;
         updatedComponents[index].maxMarks = selected.suggestedWeight || 0;
         updatedComponents[index].description = selected.description;
-        // User requested: "components are not defined with the sub components... we can select that component... and add sub components to that"
-        // So we initialize subComponents as empty to let user define them unique to this review
-        if (!updatedComponents[index].subComponents) {
+
+        // Populate sub-components from the library component if they exist
+        if (selected.predefinedSubComponents && selected.predefinedSubComponents.length > 0) {
+          updatedComponents[index].subComponents = selected.predefinedSubComponents.map(sub => ({
+            name: sub.name,
+            weight: sub.weight,
+            description: sub.description
+          }));
+        } else {
           updatedComponents[index].subComponents = [];
         }
       }
@@ -110,22 +116,65 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
       setDateError("End date must be after start date");
       return;
     }
+
+    // Validate component marks
+    for (const comp of formData.components) {
+      if (comp.subComponents && comp.subComponents.length > 0) {
+        const subTotal = comp.subComponents.reduce((sum, sub) => sum + (parseFloat(sub.weight) || 0), 0);
+        if (Math.abs(subTotal - comp.maxMarks) > 0.01) { // Floating point tolerance
+          setDateError(`Total marks for "${comp.name}" (${comp.maxMarks}) do not match sum of sub-components (${subTotal})`);
+          return;
+        }
+      }
+    }
+
+    setDateError(""); // Clear any previous errors
     onSave(formData);
   };
 
-  // Safe date helper for input type="datetime-local"
-  // Safe date helper for input type="datetime-local"
-  const formatDateForInput = (dateString) => {
-    if (!dateString) return "";
-    const date = new Date(dateString);
-    // Format to YYYY-MM-DDThh:mm (local time)
-    const pad = (num) => String(num).padStart(2, "0");
-    const year = date.getFullYear();
-    const month = pad(date.getMonth() + 1);
-    const day = pad(date.getDate());
-    const hours = pad(date.getHours());
-    const minutes = pad(date.getMinutes());
-    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  // Helper to split ISO string to date and time
+  const getDateTime = (isoString) => {
+    if (!isoString) return { date: '', time: '' };
+    const date = new Date(isoString);
+    const pad = (num) => String(num).padStart(2, '0');
+    return {
+      date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
+      time: `${pad(date.getHours())}:${pad(date.getMinutes())}`
+    };
+  };
+
+  const handleDateChange = (type, field, value) => {
+    const current = formData.deadline[type];
+    const { date, time } = getDateTime(current);
+
+    let newDate = date;
+    let newTime = time;
+
+    if (field === 'date') newDate = value;
+    if (field === 'time') newTime = value;
+
+    if (!newDate) {
+      // If date is cleared, clear the whole entry
+      setFormData({
+        ...formData,
+        deadline: { ...formData.deadline, [type]: '' }
+      });
+      return;
+    }
+
+    // If we have a date but no time, default to 00:00 or current time? 00:00 is safer for start, maybe 23:59 for end?
+    // Let's stick to 00:00 for simplicity or keep it empty if user hasn't touched it?
+    // The issue is if time is empty, we can't make a Date object.
+    // So if time is missing, default it.
+    if (!newTime) newTime = '00:00';
+
+    const dateObj = new Date(`${newDate}T${newTime}`);
+    if (!isNaN(dateObj.getTime())) {
+      setFormData({
+        ...formData,
+        deadline: { ...formData.deadline, [type]: dateObj.toISOString() }
+      });
+    }
   };
 
   const totalMarks = formData.components.reduce(
@@ -177,48 +226,32 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-6">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Order
-              </label>
-              <Input
-                type="number"
-                value={formData.order}
+          <div className="flex items-center gap-6">
+            {/* Order field removed as requested */}
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.pptRequired}
+                onChange={(e) =>
+                  setFormData({ ...formData, pptRequired: e.target.checked })
+                }
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <span className="ml-2 text-sm text-gray-700">PPT Required</span>
+            </div>
+            <div className="flex items-center">
+              <input
+                type="checkbox"
+                checked={formData.draftRequired}
                 onChange={(e) =>
                   setFormData({
                     ...formData,
-                    order: parseInt(e.target.value) || 1,
+                    draftRequired: e.target.checked,
                   })
                 }
+                className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-            </div>
-            <div className="col-span-2 flex items-center gap-6 mt-6">
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.pptRequired}
-                  onChange={(e) =>
-                    setFormData({ ...formData, pptRequired: e.target.checked })
-                  }
-                  className="rounded border-gray-300 text-blue-600"
-                />
-                <span className="ml-2 text-sm">PPT Required</span>
-              </label>
-              <label className="flex items-center">
-                <input
-                  type="checkbox"
-                  checked={formData.draftRequired}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      draftRequired: e.target.checked,
-                    })
-                  }
-                  className="rounded border-gray-300 text-blue-600"
-                />
-                <span className="ml-2 text-sm">Report Draft Required</span>
-              </label>
+              <span className="ml-2 text-sm text-gray-700">Report Draft Required</span>
             </div>
           </div>
 
@@ -228,35 +261,43 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Start Date
               </label>
-              <input
-                type="datetime-local"
-                value={formatDateForInput(formData.deadline.from)}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    deadline: { ...formData.deadline, from: e.target.value },
-                  })
-                }
-                className="w-full border border-gray-300 rounded-lg p-2"
-                required
-              />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={getDateTime(formData.deadline.from).date}
+                  onChange={(e) => handleDateChange('from', 'date', e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-lg p-2"
+                  required
+                />
+                <input
+                  type="time"
+                  value={getDateTime(formData.deadline.from).time}
+                  onChange={(e) => handleDateChange('from', 'time', e.target.value)}
+                  className="w-32 border border-gray-300 rounded-lg p-2"
+                  required
+                />
+              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 End Date
               </label>
-              <input
-                type="datetime-local"
-                value={formatDateForInput(formData.deadline.to)}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    deadline: { ...formData.deadline, to: e.target.value },
-                  })
-                }
-                className="w-full border border-gray-300 rounded-lg p-2"
-                required
-              />
+              <div className="flex gap-2">
+                <input
+                  type="date"
+                  value={getDateTime(formData.deadline.to).date}
+                  onChange={(e) => handleDateChange('to', 'date', e.target.value)}
+                  className="flex-1 border border-gray-300 rounded-lg p-2"
+                  required
+                />
+                <input
+                  type="time"
+                  value={getDateTime(formData.deadline.to).time}
+                  onChange={(e) => handleDateChange('to', 'time', e.target.value)}
+                  className="w-32 border border-gray-300 rounded-lg p-2"
+                  required
+                />
+              </div>
             </div>
             {dateError && (
               <p className="col-span-2 text-sm text-red-600">{dateError}</p>
@@ -297,10 +338,12 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
                           onChange={(val) =>
                             handleUpdateComponent(idx, "componentId", val)
                           }
-                          options={availableComponents.map((c) => ({
-                            value: c._id,
-                            label: c.name,
-                          }))}
+                          options={availableComponents
+                            .sort((a, b) => a.name.localeCompare(b.name))
+                            .map((c) => ({
+                              value: c._id,
+                              label: c.name,
+                            }))}
                           placeholder="Select from Library"
                         />
                       </div>
@@ -387,10 +430,10 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
                       ))}
                       {(!comp.subComponents ||
                         comp.subComponents.length === 0) && (
-                        <p className="text-xs text-gray-400 italic">
-                          No sub-components defined.
-                        </p>
-                      )}
+                          <p className="text-xs text-gray-400 italic">
+                            No sub-components defined.
+                          </p>
+                        )}
                     </div>
                   </div>
                 </div>

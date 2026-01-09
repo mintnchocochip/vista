@@ -34,7 +34,7 @@ const RequestFilters = ({ filters, onFilterChange, onReset }) => {
   const schoolOptions = useMemo(
     () => [
       { value: "", label: "All Schools" },
-      ...schools.map((school) => ({ value: school.name, label: school.name })),
+      ...schools.map((school) => ({ value: school.code, label: school.name })),
     ],
     [schools]
   );
@@ -49,7 +49,7 @@ const RequestFilters = ({ filters, onFilterChange, onReset }) => {
     return [
       { value: "", label: "All Programs" },
       ...availablePrograms.map((program) => ({
-        value: program.name,
+        value: program.code,
         label: program.name,
       })),
     ];

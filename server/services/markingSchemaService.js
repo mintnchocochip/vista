@@ -226,7 +226,6 @@ export class MarkingSchemaService {
       reviews: cleanedReviews,
       requiresContribution: requiresContribution || false,
       contributionType: contributionType || "none",
-      isActive: true,
     };
 
     // Check if schema already exists
@@ -280,7 +279,6 @@ export class MarkingSchemaService {
       academicYear,
       school,
       program,
-      isActive: true,
     }).lean();
 
     if (!schema) {
@@ -294,7 +292,7 @@ export class MarkingSchemaService {
    * Get all marking schemas with filters
    */
   static async getMarkingSchemas(filters = {}) {
-    const query = { isActive: true };
+    const query = {};
 
     if (filters.academicYear) query.academicYear = filters.academicYear;
     if (filters.school) query.school = filters.school;
@@ -362,15 +360,11 @@ export class MarkingSchemaService {
    * Delete marking schema
    */
   static async deleteMarkingSchema(id, deletedBy = null) {
-    const schema = await MarkingSchema.findById(id);
+    const schema = await MarkingSchema.findByIdAndDelete(id);
 
     if (!schema) {
       throw new Error("Marking schema not found.");
     }
-
-    // Soft delete
-    schema.isActive = false;
-    await schema.save();
 
     if (deletedBy) {
       logger.info("marking_schema_deleted", {

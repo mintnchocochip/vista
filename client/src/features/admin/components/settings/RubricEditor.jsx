@@ -87,7 +87,24 @@ const RubricEditor = ({ component, onSave, onCancel }) => {
     onSave(formData);
   };
 
-  const totalWeight = formData.predefinedSubComponents.reduce((sum, s) => sum + (s.weight || 0), 0);
+  // Auto-calculate suggested weight from sub-components
+  React.useEffect(() => {
+    if (formData.predefinedSubComponents.length > 0) {
+      const total = formData.predefinedSubComponents.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+      setFormData(prev => {
+        if (prev.suggestedWeight !== total) {
+          return { ...prev, suggestedWeight: total };
+        }
+        return prev;
+      });
+    }
+  }, [formData.predefinedSubComponents]);
+
+  const handleKeyDown = (e) => {
+    if (['e', 'E', '+', '-'].includes(e.key)) {
+      e.preventDefault();
+    }
+  };
 
   if (showSubComponentForm) {
     return (
@@ -147,6 +164,8 @@ const RubricEditor = ({ component, onSave, onCancel }) => {
                 type="number"
                 value={subComponentData.weight || ''}
                 onChange={(e) => setSubComponentData({ ...subComponentData, weight: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                onKeyDown={handleKeyDown}
+                onWheel={(e) => e.target.blur()}
                 min="0"
                 step="0.1"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
@@ -245,11 +264,20 @@ const RubricEditor = ({ component, onSave, onCancel }) => {
                 type="number"
                 value={formData.suggestedWeight || ''}
                 onChange={(e) => setFormData({ ...formData, suggestedWeight: e.target.value === '' ? '' : parseFloat(e.target.value) })}
+                onKeyDown={handleKeyDown}
+                onWheel={(e) => e.target.blur()}
                 min="0"
                 step="0.1"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                readOnly={formData.predefinedSubComponents.length > 0}
+                className={`w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${formData.predefinedSubComponents.length > 0 ? 'bg-gray-100 text-gray-500 cursor-not-allowed' : ''
+                  }`}
               />
-              <p className="text-xs text-gray-500 mt-1">Suggested weightage for this component in marking schema</p>
+              <p className="text-xs text-gray-500 mt-1">
+                {formData.predefinedSubComponents.length > 0
+                  ? "Calculated automatically from sub-components"
+                  : "Suggested weightage for this component in marking schema"
+                }
+              </p>
             </div>
 
             <div>

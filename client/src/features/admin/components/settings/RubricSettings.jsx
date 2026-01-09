@@ -266,19 +266,6 @@ const RubricSettings = ({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-600 mb-1">
-                Academic Year
-              </label>
-              <Select
-                value={selectedContext.academicYear}
-                onChange={(val) =>
-                  setSelectedContext({ ...selectedContext, academicYear: val })
-                }
-                options={years.map((y) => ({ value: y.name, label: y.name }))}
-                placeholder="Select Year"
-              />
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-600 mb-1">
                 School
               </label>
               <Select
@@ -311,27 +298,38 @@ const RubricSettings = ({
                 disabled={!selectedContext.school}
               />
             </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Academic Year
+              </label>
+              <Select
+                value={selectedContext.academicYear}
+                onChange={(val) =>
+                  setSelectedContext({ ...selectedContext, academicYear: val })
+                }
+                options={years.map((y) => ({ value: y.name, label: y.name }))}
+                placeholder="Select Year"
+              />
+            </div>
           </div>
         </div>
 
         {/* View Toggle */}
         <div className="flex border-b border-gray-200 mb-6">
           <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeView === "schema"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeView === "schema"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
             onClick={() => setActiveView("schema")}
           >
             Marking Schema (Reviews)
           </button>
           <button
-            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
-              activeView === "library"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700"
-            }`}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${activeView === "library"
+              ? "border-blue-600 text-blue-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
+              }`}
             onClick={() => setActiveView("library")}
           >
             Component Library
@@ -455,32 +453,51 @@ const RubricSettings = ({
                 {componentLibrary.components.map((comp) => (
                   <div
                     key={comp._id}
-                    className="border border-gray-200 rounded-lg p-4 flex justify-between items-center hover:bg-gray-50"
+                    className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50"
                   >
-                    <div>
-                      <h5 className="font-semibold text-gray-900">
-                        {comp.name}
-                      </h5>
-                      <p className="text-xs text-gray-500">
-                        {comp.category} • Weight: {comp.suggestedWeight}
-                      </p>
-                    </div>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleEditComponent(comp)}
-                      >
-                        <PencilIcon className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="sm"
-                        onClick={() => handleDeleteComponent(comp._id)}
-                        className="text-red-600"
-                      >
-                        <TrashIcon className="w-4 h-4" />
-                      </Button>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h5 className="font-semibold text-gray-900">
+                          {comp.name}
+                        </h5>
+                        <p className="text-xs text-gray-500 mb-2">
+                          {comp.category} • Weight: {comp.suggestedWeight}
+                        </p>
+
+                        {/* Display Sub-components */}
+                        {comp.predefinedSubComponents && comp.predefinedSubComponents.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-xs font-semibold text-gray-600 uppercase">Sub-components:</p>
+                            <div className="flex flex-wrap gap-2">
+                              {comp.predefinedSubComponents.map((sub, idx) => (
+                                <span
+                                  key={idx}
+                                  className="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-blue-50 text-blue-700 border border-blue-100"
+                                >
+                                  {sub.name} <span className="ml-1 opacity-75">({sub.weight})</span>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleEditComponent(comp)}
+                        >
+                          <PencilIcon className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleDeleteComponent(comp._id)}
+                          className="text-red-600"
+                        >
+                          <TrashIcon className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </div>
                   </div>
                 ))}
