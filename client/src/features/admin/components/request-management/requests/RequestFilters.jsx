@@ -97,7 +97,7 @@ const RequestFilters = ({ filters, onFilterChange, onReset }) => {
             </label>
             <Select
               value={filters.school}
-              onChange={(e) => onFilterChange("school", e.target.value)}
+              onChange={(value) => onFilterChange("school", value)}
               options={schoolOptions}
             />
           </div>
@@ -108,7 +108,7 @@ const RequestFilters = ({ filters, onFilterChange, onReset }) => {
             </label>
             <Select
               value={filters.program}
-              onChange={(e) => onFilterChange("program", e.target.value)}
+              onChange={(value) => onFilterChange("program", value)}
               options={programOptions}
             />
           </div>
@@ -119,7 +119,7 @@ const RequestFilters = ({ filters, onFilterChange, onReset }) => {
             </label>
             <Select
               value={filters.category}
-              onChange={(e) => onFilterChange("category", e.target.value)}
+              onChange={(value) => onFilterChange("category", value)}
               options={categoryOptions}
             />
           </div>
@@ -130,7 +130,7 @@ const RequestFilters = ({ filters, onFilterChange, onReset }) => {
             </label>
             <Select
               value={filters.status}
-              onChange={(e) => onFilterChange("status", e.target.value)}
+              onChange={(value) => onFilterChange("status", value)}
               options={statusOptions}
             />
           </div>
