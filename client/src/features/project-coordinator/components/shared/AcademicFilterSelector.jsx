@@ -128,7 +128,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         <div className="flex items-center gap-2 flex-1">
           <AcademicCapIcon className="w-5 h-5 text-blue-600" />
           <h2 className="text-base font-bold text-gray-900">
-            Select Academic Year & Semester
+            Select Academic Context
           </h2>
           <div className="flex-1 mx-3">
             <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
@@ -153,37 +153,36 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         )}
       </div>
 
-      {/* Display coordinator's fixed school and programme */}
-      <div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <p className="text-xs font-semibold text-gray-700 mb-1">School</p>
-            <p className="text-sm text-gray-900 font-medium">
-              {user?.school || "Loading..."}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs font-semibold text-gray-700 mb-1">
-              Programme
-            </p>
-            <p className="text-sm text-gray-900 font-medium">
-              {user?.department || "Loading..."}
-            </p>
+      {/* Display coordinator's fixed school and programme in grid layout matching admin */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-3">
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+            School
+          </label>
+          <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium cursor-not-allowed">
+            {user?.school || "Loading..."}
           </div>
         </div>
+        <div>
+          <label className="block text-xs font-semibold text-gray-700 mb-1.5">
+            Program
+          </label>
+          <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium cursor-not-allowed">
+            {user?.department || "Loading..."}
+          </div>
+        </div>
+        {/* Academic Year & Semester Selection */}
+        <Select
+          label="Academic Year"
+          value={filters.academicYearSemester}
+          onChange={handleChange}
+          options={academicYearSemesterOptions}
+          placeholder={
+            loading ? "Loading years..." : "Select Academic Year & Semester"
+          }
+          disabled={loading}
+        />
       </div>
-
-      {/* Academic Year & Semester Selection */}
-      <Select
-        label="Academic Year & Semester"
-        value={filters.academicYearSemester}
-        onChange={handleChange}
-        options={academicYearSemesterOptions}
-        placeholder={
-          loading ? "Loading years..." : "Select Academic Year & Semester"
-        }
-        disabled={loading}
-      />
     </Card>
   );
 };
