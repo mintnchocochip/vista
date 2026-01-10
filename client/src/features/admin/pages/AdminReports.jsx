@@ -13,8 +13,11 @@ import {
   ClipboardDocumentCheckIcon,
   TableCellsIcon
 } from '@heroicons/react/24/outline';
-import { SCHOOLS, PROGRAMMES_BY_SCHOOL, YEARS, SEMESTERS } from '../../../shared/constants/config';
+import { YEARS } from '../../../shared/constants/config';
 import { useToast } from '../../../shared/hooks/useToast';
+import * as XLSX from 'xlsx';
+import * as adminApi from '../services/adminApi';
+
 
 const AdminReports = () => {
   const [selectedReport, setSelectedReport] = useState(null);
@@ -31,6 +34,50 @@ const AdminReports = () => {
   });
   const { showToast } = useToast();
 
+  /*
+   * State for dynamic data
+   */
+  const [masterData, setMasterData] = useState({ schools: [], programs: [], academicYears: [] });
+  const [facultyList, setFacultyList] = useState([]);
+  const [panelList, setPanelList] = useState([]);
+  const [loadingConfig, setLoadingConfig] = useState(true);
+
+  // Fetch configuration data on mount
+  React.useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const [masterRes, facultyRes, panelsRes] = await Promise.all([
+          adminApi.fetchMasterData(),
+          adminApi.fetchFaculty(),
+          adminApi.fetchPanels()
+        ]);
+
+        if (masterRes.success) {
+          setMasterData({
+            schools: masterRes.data.schools || [],
+            programs: masterRes.data.programs || [],
+            academicYears: masterRes.data.academicYears || []
+          });
+        }
+
+        if (facultyRes.success) {
+          setFacultyList(facultyRes.faculty || []);
+        }
+
+        if (panelsRes.success) {
+          setPanelList(panelsRes.panels || []);
+        }
+      } catch (error) {
+        console.error("Error fetching report config:", error);
+        showToast("Failed to load filter options", "error");
+      } finally {
+        setLoadingConfig(false);
+      }
+    };
+
+    fetchConfig();
+  }, []);
+
   const reportTypes = [
     {
       id: 'master-report',
@@ -46,7 +93,7 @@ const AdminReports = () => {
       name: 'Students by Marks Range',
       description: 'Generate report of students with marks in customizable ranges',
       icon: ChartBarIcon,
-      filters: ['school', 'programme', 'year', 'semester', 'minMarks', 'maxMarks'],
+      filters: ['school', 'programme', 'year', 'minMarks', 'maxMarks'],
       color: 'blue'
     },
     {
@@ -54,7 +101,7 @@ const AdminReports = () => {
       name: 'Panel Marks Entry Status',
       description: 'Report on panels and how many students they have entered marks for',
       icon: ClipboardDocumentCheckIcon,
-      filters: ['school', 'programme', 'year', 'semester', 'panelId'],
+      filters: ['school', 'programme', 'year', 'panelId'],
       color: 'green'
     },
     {
@@ -62,7 +109,7 @@ const AdminReports = () => {
       name: 'Guide-wise Student List',
       description: 'List of students under each guide with their marks',
       icon: AcademicCapIcon,
-      filters: ['school', 'programme', 'year', 'semester', 'guideId'],
+      filters: ['school', 'programme', 'year', 'guideId'],
       color: 'purple'
     },
     {
@@ -70,7 +117,7 @@ const AdminReports = () => {
       name: 'Comprehensive Marks Report',
       description: 'Complete marks report with guide and panel marks for all students',
       icon: TableCellsIcon,
-      filters: ['school', 'programme', 'year', 'semester'],
+      filters: ['school', 'programme', 'year'],
       color: 'indigo'
     },
     {
@@ -78,7 +125,7 @@ const AdminReports = () => {
       name: 'Faculty Workload Report',
       description: 'Report on faculty members and their project assignments',
       icon: UserGroupIcon,
-      filters: ['school', 'programme', 'year', 'semester'],
+      filters: ['school', 'programme', 'year'],
       color: 'orange'
     },
     {
@@ -86,7 +133,7 @@ const AdminReports = () => {
       name: 'Pending Marks Report',
       description: 'Students with incomplete marks from guide or panel',
       icon: ClipboardDocumentCheckIcon,
-      filters: ['school', 'programme', 'year', 'semester', 'status'],
+      filters: ['school', 'programme', 'year', 'status'],
       color: 'red'
     },
     {
@@ -94,7 +141,7 @@ const AdminReports = () => {
       name: 'Marks Distribution Analysis',
       description: 'Statistical analysis of marks distribution across ranges',
       icon: ChartBarIcon,
-      filters: ['school', 'programme', 'year', 'semester'],
+      filters: ['school', 'programme', 'year'],
       color: 'teal'
     },
     {
@@ -102,7 +149,7 @@ const AdminReports = () => {
       name: 'Student Complete Details',
       description: 'Comprehensive student report with project, guide, panel, and marks',
       icon: UserGroupIcon,
-      filters: ['school', 'programme', 'year', 'semester'],
+      filters: ['school', 'programme', 'year'],
       color: 'pink'
     }
   ];
@@ -122,7 +169,7 @@ const AdminReports = () => {
 
   const getProgrammes = () => {
     if (!filters.school) return [];
-    return PROGRAMMES_BY_SCHOOL[filters.school] || [];
+    return masterData.programs.filter(p => p.school === filters.school);
   };
 
   const validateFilters = () => {
@@ -138,9 +185,15 @@ const AdminReports = () => {
     if (report.filters.includes('school') && !filters.school) return false;
     if (report.filters.includes('programme') && !filters.programme) return false;
     if (report.filters.includes('year') && !filters.year) return false;
-    if (report.filters.includes('semester') && !filters.semester) return false;
 
     return true;
+  };
+
+  /* 
+   * Helper to format current date for filenames
+   */
+  const getFormattedDate = () => {
+    return new Date().toISOString().split('T')[0];
   };
 
   const handleGenerateReport = async () => {
@@ -152,43 +205,73 @@ const AdminReports = () => {
     try {
       const report = reportTypes.find(r => r.id === selectedReport);
 
-      // Special handling for master report
+      // Warning for master report due to size
       if (report.isMaster) {
-        // Show warning about large data export
         if (!window.confirm('Master Report will export ALL data from the database. This may take several minutes. Continue?')) {
           return;
         }
-
-        // Simulate longer API call for master report
-        await new Promise(resolve => setTimeout(resolve, 3000));
-
-        showToast('Master Report generation queued. You will be notified when ready for download.', 'success');
-
-        // In production, this would:
-        // 1. Trigger backend job to compile all data
-        // 2. Generate comprehensive Excel with multiple sheets:
-        //    - Students (all fields from students table)
-        //    - Faculty (all fields from faculty table)
-        //    - Projects (all fields from projects table)
-        //    - Marks (guide marks, panel marks, combined)
-        //    - Assignments (guide-student, panel-student mappings)
-        //    - Academic Context (schools, programmes, years, semesters)
-        //    - Reviews & Comments
-        //    - Requests & Status
-        // 3. Email download link or show in notifications
-        console.log('Master report queued - will compile all database tables');
-        return;
       }
 
-      // Regular report generation
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      showToast(`Generating ${report.name}...`, 'loading');
 
-      showToast(`${report.name} generated successfully!`, 'success');
+      // Fetch data from backend
+      const response = await adminApi.fetchReportData(selectedReport, filters);
 
-      // In production, this would trigger Excel download
-      console.log('Generating report:', selectedReport, 'with filters:', filters);
+      if (!response.success || !response.data) {
+        throw new Error(response.message || 'No data received');
+      }
+
+      const reportData = response.data;
+
+      // Handle Excel Generation
+      const wb = XLSX.utils.book_new();
+
+      if (report.isMaster) {
+        // Master Report: Multiple Sheets
+        if (reportData.students) {
+          const wsStudents = XLSX.utils.json_to_sheet(reportData.students);
+          XLSX.utils.book_append_sheet(wb, wsStudents, "Students");
+        }
+        if (reportData.faculty) {
+          const wsFaculty = XLSX.utils.json_to_sheet(reportData.faculty);
+          XLSX.utils.book_append_sheet(wb, wsFaculty, "Faculty");
+        }
+        if (reportData.projects) {
+          const wsProjects = XLSX.utils.json_to_sheet(reportData.projects);
+          XLSX.utils.book_append_sheet(wb, wsProjects, "Projects");
+        }
+        if (reportData.marks) {
+          const wsMarks = XLSX.utils.json_to_sheet(reportData.marks);
+          XLSX.utils.book_append_sheet(wb, wsMarks, "Marks");
+        }
+        if (reportData.panels) {
+          const wsPanels = XLSX.utils.json_to_sheet(reportData.panels);
+          XLSX.utils.book_append_sheet(wb, wsPanels, "Panels");
+        }
+      } else {
+        // Standard Report: Single Sheet
+        // Flatten data if needed? Backend sends flat JSON usually.
+        // If data is array
+        if (Array.isArray(reportData)) {
+          const ws = XLSX.utils.json_to_sheet(reportData);
+          XLSX.utils.book_append_sheet(wb, ws, "Report Data");
+        } else {
+          // If object (e.g. { summary: ..., details: ... }) - complex handling
+          // For now assuming backend returns array for specific reports
+          const ws = XLSX.utils.json_to_sheet([reportData]); // Fallback
+          XLSX.utils.book_append_sheet(wb, ws, "Data");
+        }
+      }
+
+      // Download File
+      const fileName = `${selectedReport}_${getFormattedDate()}.xlsx`;
+      XLSX.writeFile(wb, fileName);
+
+      showToast('Report generated successfully!', 'success');
+      console.log('Report generated:', fileName);
     } catch (error) {
-      showToast('Error generating report', 'error');
+      console.error("Report Generation Error:", error);
+      showToast(error.message || 'Error generating report', 'error');
     }
   };
 
@@ -207,30 +290,34 @@ const AdminReports = () => {
 
         {/* Report Types */}
         <div className="mb-6 bg-white rounded-lg shadow-sm p-2">
-          <div className="flex flex-wrap gap-2">
-            {reportTypes.map((report) => {
-              const Icon = report.icon;
-              const isActive = selectedReport === report.id;
+          {!loadingConfig ? (
+            <div className="flex flex-wrap gap-2">
+              {reportTypes.map((report) => {
+                const Icon = report.icon;
+                const isActive = selectedReport === report.id;
 
-              return (
-                <button
-                  key={report.id}
-                  onClick={() => setSelectedReport(report.id)}
-                  className={`
+                return (
+                  <button
+                    key={report.id}
+                    onClick={() => setSelectedReport(report.id)}
+                    className={`
                     flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg font-medium text-sm transition-all whitespace-nowrap
                     ${isActive
-                      ? 'bg-blue-600 text-white shadow-md'
-                      : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                    }
+                        ? 'bg-blue-600 text-white shadow-md'
+                        : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }
                   `}
-                  title={report.description}
-                >
-                  <Icon className="h-4 w-4" />
-                  <span>{report.name}</span>
-                </button>
-              );
-            })}
-          </div>
+                    title={report.description}
+                  >
+                    <Icon className="h-4 w-4" />
+                    <span>{report.name}</span>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="p-4 text-center text-gray-500">Loading configuration...</div>
+          )}
         </div>
 
         {/* Filters and Preview */}
@@ -304,8 +391,8 @@ const AdminReports = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Select School</option>
-                        {SCHOOLS.map((school) => (
-                          <option key={school.id} value={school.id}>
+                        {masterData.schools.map((school) => (
+                          <option key={school._id || school.code} value={school.code}>
                             {school.name}
                           </option>
                         ))}
@@ -325,9 +412,9 @@ const AdminReports = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 disabled:bg-gray-100"
                       >
                         <option value="">Select Programme</option>
-                        {getProgrammes().map((programme) => (
-                          <option key={programme.id} value={programme.id}>
-                            {programme.name}
+                        {getProgrammes().map((prog) => (
+                          <option key={prog._id || prog.code} value={prog.code}>
+                            {prog.name}
                           </option>
                         ))}
                       </select>
@@ -345,29 +432,9 @@ const AdminReports = () => {
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                       >
                         <option value="">Select Year</option>
-                        {YEARS.map((year) => (
-                          <option key={year.id} value={year.id}>
-                            {year.label}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  )}
-
-                  {selectedReportData?.filters.includes('semester') && (
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Semester <span className="text-red-500">*</span>
-                      </label>
-                      <select
-                        value={filters.semester}
-                        onChange={(e) => handleFilterChange('semester', e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      >
-                        <option value="">Select Semester</option>
-                        {SEMESTERS.map((semester) => (
-                          <option key={semester.id} value={semester.id}>
-                            {semester.name}
+                        {masterData.academicYears.map((year) => (
+                          <option key={year._id || year.year} value={year.year}>
+                            {year.year}
                           </option>
                         ))}
                       </select>
@@ -413,12 +480,16 @@ const AdminReports = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Guide (Optional)
                       </label>
-                      <Input
-                        type="text"
+                      <select
                         value={filters.guideId}
                         onChange={(e) => handleFilterChange('guideId', e.target.value)}
-                        placeholder="Enter guide ID or leave empty for all"
-                      />
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">All Guides</option>
+                        {facultyList.map(f => (
+                          <option key={f._id} value={f._id}>{f.name} ({f.employeeId})</option>
+                        ))}
+                      </select>
                     </div>
                   )}
 
@@ -427,12 +498,16 @@ const AdminReports = () => {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Panel (Optional)
                       </label>
-                      <Input
-                        type="text"
+                      <select
                         value={filters.panelId}
                         onChange={(e) => handleFilterChange('panelId', e.target.value)}
-                        placeholder="Enter panel ID or leave empty for all"
-                      />
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      >
+                        <option value="">All Panels</option>
+                        {panelList.map(p => (
+                          <option key={p._id} value={p._id}>{p.panelName || `Panel ${p._id.substr(-6)}`}</option>
+                        ))}
+                      </select>
                     </div>
                   )}
 

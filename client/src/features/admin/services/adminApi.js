@@ -121,13 +121,15 @@ const adaptPanel = (backendPanel) => {
   if (!backendPanel) return null;
 
   return {
+    id: backendPanel._id,
     _id: backendPanel._id,
     members:
       backendPanel.members?.map((m) => ({
         _id: m._id,
-        employeeId: m.employeeId,
-        name: m.name,
-        email: m.emailId,
+        employeeId: m.faculty?.employeeId,
+        name: m.faculty?.name,
+        email: m.faculty?.emailId,
+        specialization: m.faculty?.specialization,
       })) || [],
     academicYear: backendPanel.academicYear,
     school: backendPanel.school,
@@ -771,13 +773,13 @@ export const createBroadcast = async (
   message,
   expiresAt,
   targetSchools = [],
-  targetDepartments = []
+  targetPrograms = []
 ) => {
   const response = await api.post("/admin/broadcasts", {
     message,
     expiresAt,
     targetSchools,
-    targetDepartments,
+    targetPrograms,
   });
   return response.data;
 };
@@ -795,6 +797,23 @@ export const updateBroadcast = async (broadcastId, data) => {
  */
 export const deleteBroadcast = async (broadcastId) => {
   const response = await api.delete(`/admin/broadcasts/${broadcastId}`);
+  return response.data;
+};
+
+// ==================== Report APIs ====================
+
+/**
+ * Fetch report data based on type and filters
+ * @param {string} type - Report type identifier
+ * @param {Object} filters - Report filters
+ */
+export const fetchReportData = async (type, filters = {}) => {
+  const response = await api.get("/admin/reports", {
+    params: {
+      type,
+      ...filters,
+    },
+  });
   return response.data;
 };
 

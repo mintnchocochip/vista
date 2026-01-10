@@ -1,12 +1,31 @@
 import api from "./api";
 
+// Helper to adapt backend panel structure to frontend expectations
+const adaptPanel = (backendPanel) => {
+  if (!backendPanel) return null;
+  return {
+    ...backendPanel, // Keep original properties
+    id: backendPanel._id, // Add alias for convenience
+    members:
+      backendPanel.members?.map((m) => ({
+        _id: m.faculty?._id || m._id || m.faculty, // robust fallback
+        employeeId: m.faculty?.employeeId || m.employeeId,
+        name: m.faculty?.name || m.name,
+        email: m.faculty?.emailId || m.email,
+        specialization: m.faculty?.specialization || m.specialization,
+      })) || [],
+    assignedProjects: backendPanel.assignedProjectsCount || 0,
+    projects: backendPanel.projects || [], // Expecting projects list from backend update
+  };
+};
+
 // Panel Management
 export const fetchPanels = async (filters) => {
   try {
     const response = await api.get("/admin/panels", { params: filters });
     return {
       success: true,
-      panels: response.data.data,
+      panels: response.data.data.map(adaptPanel),
     };
   } catch (error) {
     return {
@@ -16,10 +35,31 @@ export const fetchPanels = async (filters) => {
   }
 };
 
+const adaptProject = (backendProject) => {
+  if (!backendProject) return null;
+  return {
+    ...backendProject,
+    id: backendProject._id,
+    panel: backendProject.panel
+      ? typeof backendProject.panel === "object"
+        ? adaptPanel(backendProject.panel)
+        : backendProject.panel
+      : null,
+    panelId:
+      backendProject.panel && typeof backendProject.panel === "object"
+        ? backendProject.panel._id
+        : backendProject.panel || null,
+  };
+};
+
 export const fetchProjects = async (filters) => {
   try {
     const response = await api.get("/admin/projects", { params: filters });
-    return response.data;
+    return {
+      success: true,
+      data: response.data.data.map(adaptProject),
+      count: response.data.count,
+    };
   } catch (error) {
     throw new Error(
       error.response?.data?.message || "Failed to fetch projects"

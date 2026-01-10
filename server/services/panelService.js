@@ -156,9 +156,26 @@ export class PanelService {
       query.specializations = { $in: [filters.specialization] };
     }
 
-    return await Panel.find(query)
+    const panels = await Panel.find(query)
       .populate("members.faculty", "name employeeId emailId specialization")
       .lean();
+
+    // Populate assigned projects for each panel
+    const panelsWithProjects = await Promise.all(
+      panels.map(async (panel) => {
+        const projects = await Project.find({
+          panel: panel._id,
+          status: { $ne: "archived" }, // Exclude archived if necessary, or just all
+        })
+          .select("name type teamSize studentIds students") // Ensure students field is selected
+          .populate("students", "name regNo") // Populate student details
+          .lean();
+
+        return { ...panel, projects };
+      })
+    );
+
+    return panelsWithProjects;
   }
 
   /**

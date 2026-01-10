@@ -442,10 +442,11 @@ export async function autoAssignPanelsToProjects(req, res) {
   try {
     const { academicYear, school, program } = req.body;
 
-    const results = await PanelService.autoAssignPanelsToProjects(
+    const results = await PanelService.autoAssignPanels(
       academicYear,
       school,
       program,
+      0, // buffer
       req.user._id
     );
 

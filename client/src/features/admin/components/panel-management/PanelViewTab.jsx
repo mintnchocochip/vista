@@ -221,12 +221,45 @@ const PanelViewTab = () => {
                       </div>
 
                       {/* Note about projects */}
-                      {panel.assignedProjects > 0 && (
-                        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                          <p className="text-sm text-blue-800">
-                            This panel has {panel.assignedProjects} project(s)
-                            assigned. View project details in the Project
-                            Management section.
+                      {/* Projects List */}
+                      {panel.projects?.length > 0 ? (
+                        <div className="mt-6">
+                          <h4 className="text-sm font-medium text-gray-900 mb-3 flex items-center">
+                            <DocumentTextIcon className="w-4 h-4 mr-2" />
+                            Assigned Projects ({panel.projects.length})
+                          </h4>
+                          <div className="grid grid-cols-1 gap-3">
+                            {panel.projects.map((project) => (
+                              <div
+                                key={project._id}
+                                className="bg-white border boundary-gray-200 rounded-lg p-3 shadow-sm flex justify-between items-center"
+                              >
+                                <div>
+                                  <p className="text-sm font-medium text-gray-900">
+                                    {project.name}
+                                  </p>
+                                  <p className="text-xs text-gray-500 mt-1">
+                                    {project.type}
+                                  </p>
+                                  {project.students?.length > 0 && (
+                                    <div className="mt-2 text-xs text-gray-500">
+                                      {project.students
+                                        .map((s) => `${s.name} (${s.regNo})`)
+                                        .join(", ")}
+                                    </div>
+                                  )}
+                                </div>
+                                <span className="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded whitespace-nowrap ml-2">
+                                  {project.teamSize || project.students?.length || "?"} Members
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="mt-6">
+                          <p className="text-sm text-gray-500 italic">
+                            No projects assigned to this panel yet.
                           </p>
                         </div>
                       )}

@@ -150,7 +150,7 @@ export const validatePanelSize = async (req, res, next) => {
       });
     }
 
-    const panelSize = members?.length || 0;
+    const panelSize = (members || req.body.memberEmployeeIds)?.length || 0;
 
     if (panelSize < config.minPanelSize || panelSize > config.maxPanelSize) {
       return res.status(400).json({

@@ -77,14 +77,19 @@ const adaptProject = (backendProject) => {
       })) || [],
     guide: backendProject.guideFaculty
       ? {
-          _id: backendProject.guideFaculty._id,
-          name: backendProject.guideFaculty.name,
-          employeeId: backendProject.guideFaculty.employeeId,
-        }
+        _id: backendProject.guideFaculty._id,
+        name: backendProject.guideFaculty.name,
+        employeeId: backendProject.guideFaculty.employeeId,
+      }
       : null,
     panel: backendProject.panel || null,
+    panelId:
+      backendProject.panel && typeof backendProject.panel === "object"
+        ? backendProject.panel._id
+        : backendProject.panel || null,
     createdAt: backendProject.createdAt,
     updatedAt: backendProject.updatedAt,
+    id: backendProject._id, // Add id alias
   };
 };
 
@@ -95,18 +100,22 @@ const adaptPanel = (backendPanel) => {
   if (!backendPanel) return null;
 
   return {
+    id: backendPanel._id,
     _id: backendPanel._id,
     members:
       backendPanel.members?.map((m) => ({
         _id: m.faculty?._id || m._id,
         employeeId: m.faculty?.employeeId || m.employeeId,
         name: m.faculty?.name || m.name,
+        email: m.faculty?.emailId || m.email,
+        specialization: m.faculty?.specialization,
       })) || [],
     academicYear: backendPanel.academicYear,
     school: backendPanel.school,
     department: backendPanel.department,
     isActive: backendPanel.isActive !== false,
-    assignedProjects: backendPanel.assignedProjects || 0,
+    assignedProjects: backendPanel.assignedProjectsCount || 0,
+    projects: backendPanel.projects || [],
   };
 };
 

@@ -19,7 +19,7 @@ const BroadcastForm = ({
   onRefreshHistory,
   historyLoading,
   schoolOptions,
-  departmentOptions
+  programOptions
 }) => {
   return (
     <Card className="mb-8">
@@ -97,11 +97,11 @@ const BroadcastForm = ({
               onReset={() => onResetAudience('targetSchools')}
             />
             <AudienceSelector
-              label="Target Departments"
-              options={departmentOptions}
-              selected={formData.targetDepartments}
-              onToggle={(value) => onToggleAudience('targetDepartments', value)}
-              onReset={() => onResetAudience('targetDepartments')}
+              label="Target Programs"
+              options={programOptions}
+              selected={formData.targetPrograms}
+              onToggle={(value) => onToggleAudience('targetPrograms', value)}
+              onReset={() => onResetAudience('targetPrograms')}
             />
           </div>
 
@@ -116,7 +116,6 @@ const BroadcastForm = ({
               value={formData.expiresAt}
               onChange={onInputChange}
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              min={toDatetimeLocalValue(new Date(Date.now() + 5 * 60 * 1000))}
             />
             <p className="mt-2 text-xs text-gray-500">
               The message disappears automatically after this time.
@@ -129,11 +128,10 @@ const BroadcastForm = ({
               Action
             </label>
             <div className="flex gap-4">
-              <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${
-                formData.action === 'notice' 
-                  ? 'border-blue-500 bg-blue-50 text-blue-700' 
-                  : 'border-gray-200 bg-white'
-              }`}>
+              <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${formData.action === 'notice'
+                ? 'border-blue-500 bg-blue-50 text-blue-700'
+                : 'border-gray-200 bg-white'
+                }`}>
                 <input
                   type="radio"
                   name="action"
@@ -144,11 +142,10 @@ const BroadcastForm = ({
                 />
                 <span className="text-sm font-medium">Notice (informational)</span>
               </label>
-              <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${
-                formData.action === 'block' 
-                  ? 'border-red-500 bg-red-50 text-red-700' 
-                  : 'border-gray-200 bg-white'
-              }`}>
+              <label className={`flex items-center gap-2 px-4 py-2 rounded-lg border cursor-pointer ${formData.action === 'block'
+                ? 'border-red-500 bg-red-50 text-red-700'
+                : 'border-gray-200 bg-white'
+                }`}>
                 <input
                   type="radio"
                   name="action"
@@ -184,8 +181,8 @@ const BroadcastForm = ({
           <div className="flex justify-end">
             <Button type="submit" disabled={sending}>
               <MegaphoneIcon className="h-5 w-5 mr-2" />
-              {sending 
-                ? (editingBroadcastId ? 'Saving...' : 'Sending...') 
+              {sending
+                ? (editingBroadcastId ? 'Saving...' : 'Sending...')
                 : editingBroadcastId ? 'Update Broadcast' : 'Send Broadcast'}
             </Button>
           </div>

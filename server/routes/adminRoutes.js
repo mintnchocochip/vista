@@ -321,6 +321,8 @@ router.put("/broadcasts/:id", adminController.updateBroadcastMessage);
 
 router.delete("/broadcasts/:id", adminController.deleteBroadcastMessage);
 
+import { getReportData } from "../controllers/reportController.js";
+
 /**
  * Reporting endpoints
  */
@@ -353,5 +355,7 @@ router.get(
   validateRequired(["academicYear", "school", "program"], "query"),
   adminController.getStudentPerformanceReport
 );
+
+router.get("/reports", getReportData);
 
 export default router;

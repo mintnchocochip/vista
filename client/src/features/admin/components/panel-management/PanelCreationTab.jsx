@@ -33,6 +33,21 @@ import {
   bulkCreatePanels,
 } from "../../../../services/adminApi";
 
+const SPECIALIZATION_OPTIONS = [
+  { value: "Artificial Intelligence", label: "Artificial Intelligence (AI)" },
+  { value: "Machine Learning", label: "Machine Learning (ML)" },
+  { value: "Data Science", label: "Data Science" },
+  { value: "Cyber Security", label: "Cyber Security" },
+  { value: "Cloud Computing", label: "Cloud Computing" },
+  { value: "Internet of Things", label: "Internet of Things (IoT)" },
+  { value: "Blockchain", label: "Blockchain" },
+  { value: "Software Engineering", label: "Software Engineering" },
+  { value: "Web Technology", label: "Web Technology" },
+  { value: "Image Processing", label: "Image Processing" },
+  { value: "Computer Networks", label: "Computer Networks" },
+  { value: "General", label: "General" },
+];
+
 const PanelCreation = () => {
   const [filters, setFilters] = useState(null);
   const [activeMode, setActiveMode] = useState(null); // 'manual', 'auto', or 'upload'
@@ -50,6 +65,7 @@ const PanelCreation = () => {
   const [manualForm, setManualForm] = useState({
     panelName: "",
     selectedFaculties: [],
+    specializations: "",
   });
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
@@ -184,11 +200,12 @@ const PanelCreation = () => {
       const payload = {
         memberEmployeeIds: manualForm.selectedFaculties,
         panelName: manualForm.panelName || `Panel ${createdPanels.length + 1}`,
-        school: filters.school,
-        program: filters.program,
+        school: filters.schoolCode || filters.school,
+        program: filters.programCode || filters.program,
         academicYear: filters.academicYear,
         semester: filters.semester,
         panelType: manualForm.panelType || "regular",
+        specializations: manualForm.specializations ? [manualForm.specializations] : [],
       };
 
       const result = await createPanel(payload);
@@ -197,6 +214,7 @@ const PanelCreation = () => {
       setManualForm({
         panelName: "",
         selectedFaculties: [],
+        specializations: "",
       });
 
       showToast("Panel created successfully", "success");
@@ -219,8 +237,8 @@ const PanelCreation = () => {
       setIsCreatingAuto(true);
 
       const payload = {
-        programs: [filters.program],
-        school: filters.school,
+        programs: [filters.programCode || filters.program],
+        school: filters.schoolCode || filters.school,
         academicYear: filters.academicYear,
         panelSize: autoForm.panelSize,
         facultyList: facultyList.map((f) => f.employeeId),
@@ -307,8 +325,8 @@ const PanelCreation = () => {
 
       const enrichedData = panelData.map((panel) => ({
         ...panel,
-        school: filters.school,
-        program: filters.program,
+        school: filters.schoolCode || filters.school,
+        program: filters.programCode || filters.program,
         academicYear: filters.academicYear,
         semester: filters.semester,
       }));
@@ -513,6 +531,19 @@ const PanelCreation = () => {
                   setManualForm((prev) => ({
                     ...prev,
                     panelName: e.target.value,
+                  }))
+                }
+              />
+
+              <Select
+                label="Specialization"
+                placeholder="Select Specialization"
+                options={SPECIALIZATION_OPTIONS}
+                value={manualForm.specializations}
+                onChange={(value) =>
+                  setManualForm((prev) => ({
+                    ...prev,
+                    specializations: value,
                   }))
                 }
               />

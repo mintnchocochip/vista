@@ -25,7 +25,7 @@ const AdminBroadcasts = () => {
 
   // Options from database
   const [schoolOptions, setSchoolOptions] = useState([]);
-  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [programOptions, setProgramOptions] = useState([]);
   const [yearOptions, setYearOptions] = useState([]);
   const [semesterOptions, setSemesterOptions] = useState([]);
   const [optionsLoading, setOptionsLoading] = useState(true);
@@ -34,7 +34,7 @@ const AdminBroadcasts = () => {
     title: '',
     message: '',
     targetSchools: [],
-    targetDepartments: [],
+    targetPrograms: [],
     expiresAt: '',
     action: 'notice',
     isActive: true,
@@ -54,9 +54,9 @@ const AdminBroadcasts = () => {
       const masterData = await fetchMasterData();
 
       if (masterData.success) {
-        setSchoolOptions(masterData.schools?.map(s => s.name) || []);
-        setDepartmentOptions(masterData.departments?.map(d => d.name) || []);
-        setYearOptions(masterData.academicYears?.map(y => y.year) || []);
+        setSchoolOptions(masterData.data?.schools?.map(s => s.name) || []);
+        setProgramOptions(masterData.data?.programs?.map(p => p.name) || []);
+        setYearOptions(masterData.data?.academicYears?.map(y => y.year) || []);
         setSemesterOptions(['Fall Semester', 'Winter Semester', 'Summer Semester']);
       } else {
         showToast(masterData.message || 'Failed to load options', 'error');
@@ -74,7 +74,7 @@ const AdminBroadcasts = () => {
       title: '',
       message: '',
       targetSchools: [],
-      targetDepartments: [],
+      targetPrograms: [],
       expiresAt: '',
       action: 'notice',
       isActive: true,
@@ -173,7 +173,7 @@ const AdminBroadcasts = () => {
         title: formData.title.trim(),
         message: formData.message.trim(),
         targetSchools: formData.targetSchools,
-        targetDepartments: formData.targetDepartments,
+        targetPrograms: formData.targetPrograms,
         expiresAt: expiryIso,
         action: formData.action || 'notice',
         isActive: formData.isActive,
@@ -187,7 +187,7 @@ const AdminBroadcasts = () => {
           payload.message,
           payload.expiresAt,
           payload.targetSchools,
-          payload.targetDepartments
+          payload.targetPrograms
         );
       }
 
@@ -215,7 +215,7 @@ const AdminBroadcasts = () => {
       title: broadcast.title || '',
       message: broadcast.message || '',
       targetSchools: broadcast.targetSchools || [],
-      targetDepartments: broadcast.targetDepartments || [],
+      targetPrograms: broadcast.targetPrograms || broadcast.targetDepartments || [],
       expiresAt: toDatetimeLocalValue(broadcast.expiresAt),
       action: broadcast.action || 'notice',
       isActive: broadcast.isActive ?? true,
@@ -252,11 +252,11 @@ const AdminBroadcasts = () => {
     const schoolLabel = formData.targetSchools.length === 0
       ? 'All schools'
       : `${formData.targetSchools.length} selected`;
-    const departmentLabel = formData.targetDepartments.length === 0
-      ? 'All departments'
-      : `${formData.targetDepartments.length} selected`;
+    const departmentLabel = formData.targetPrograms.length === 0
+      ? 'All programs'
+      : `${formData.targetPrograms.length} selected`;
     return `${schoolLabel} • ${departmentLabel}`;
-  }, [formData.targetSchools, formData.targetDepartments]);
+  }, [formData.targetSchools, formData.targetPrograms]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -279,7 +279,7 @@ const AdminBroadcasts = () => {
           onRefreshHistory={fetchHistory}
           historyLoading={historyLoading}
           schoolOptions={schoolOptions}
-          departmentOptions={departmentOptions}
+          programOptions={programOptions}
         />
 
         {/* Broadcast History */}

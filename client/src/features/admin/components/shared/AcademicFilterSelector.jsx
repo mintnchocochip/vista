@@ -84,6 +84,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
           ?.map((d) => ({
             value: d.name,
             label: d.name,
+            code: d.code,
           })) || [];
 
       setOptions((prev) => ({
@@ -115,7 +116,11 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
 
       onFilterComplete({
         school: selectedSchool?.name || filters.school, // Pass school name
+        schoolCode: filters.school, // Pass school code
         program: filters.program, // Add program field for consistency
+        programCode: (masterData.programs || masterData.departments)?.find(
+          (p) => p.name === filters.program && p.school === filters.school
+        )?.code, // Robust lookup
         department: filters.program, // Backend uses 'department' field to store programme data
         academicYear: filters.year,
         programme: filters.program, // Also include as programme for clarity
