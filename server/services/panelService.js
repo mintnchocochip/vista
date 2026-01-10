@@ -239,7 +239,12 @@ export class PanelService {
   /**
    * Assign panel to project
    */
-  static async assignPanelToProject(panelId, projectId, assignedBy = null) {
+  static async assignPanelToProject(
+    panelId,
+    projectId,
+    assignedBy = null,
+    skipValidation = false
+  ) {
     const [panel, project] = await Promise.all([
       Panel.findById(panelId),
       Project.findById(projectId),
@@ -282,7 +287,11 @@ export class PanelService {
     project.panel = panelId;
     panel.assignedProjectsCount += 1;
 
-    await Promise.all([project.save(), panel.save()]);
+    // Save with optional validation skipping for project (to handle missing specialization on old records)
+    await Promise.all([
+      project.save({ validateBeforeSave: !skipValidation }),
+      panel.save(),
+    ]);
 
     if (assignedBy) {
       logger.info("panel_assigned_to_project", {

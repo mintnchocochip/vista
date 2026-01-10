@@ -1,5 +1,5 @@
 // src/features/admin/pages/AdminReports.jsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navbar from '../../../shared/components/Navbar';
 import AdminTabs from '../components/shared/AdminTabs';
 import Card from '../../../shared/components/Card';
@@ -17,14 +17,17 @@ import { YEARS } from '../../../shared/constants/config';
 import { useToast } from '../../../shared/hooks/useToast';
 import * as XLSX from 'xlsx';
 import * as adminApi from '../services/adminApi';
-
+import { useAdminContext } from '../context/AdminContext';
 
 const AdminReports = () => {
   const [selectedReport, setSelectedReport] = useState(null);
+  const { academicContext, updateAcademicContext } = useAdminContext();
+  const { showToast } = useToast();
+
   const [filters, setFilters] = useState({
-    school: '',
-    programme: '',
-    year: '',
+    school: academicContext.school || '',
+    programme: academicContext.program || '',
+    year: academicContext.year || '',
     semester: '',
     minMarks: '',
     maxMarks: '',
@@ -32,7 +35,6 @@ const AdminReports = () => {
     panelId: '',
     status: ''
   });
-  const { showToast } = useToast();
 
   /*
    * State for dynamic data
@@ -41,6 +43,16 @@ const AdminReports = () => {
   const [facultyList, setFacultyList] = useState([]);
   const [panelList, setPanelList] = useState([]);
   const [loadingConfig, setLoadingConfig] = useState(true);
+
+  // Sync filters with academicContext when context changes (optional, or just on mount)
+  // Decided: Sync one-way on mount is handled by useState initializer.
+  // Two-way sync: if user changes filter here, should it update global context?
+  // "Throughout the admin page... persistent" implies yes.
+  useEffect(() => {
+    // If context has values and filters are empty, update filters?
+    // Or just let the user change them.
+    // If the user changes them here, we should update the context so it persists to other pages.
+  }, []);
 
   // Fetch configuration data on mount
   React.useEffect(() => {
@@ -165,6 +177,15 @@ const AdminReports = () => {
 
       return updated;
     });
+
+    // Update global context for relevant fields to maintain persistence
+    if (field === 'school') {
+      updateAcademicContext({ school: value, program: '' });
+    } else if (field === 'programme') {
+      updateAcademicContext({ program: value });
+    } else if (field === 'year') {
+      updateAcademicContext({ year: value });
+    }
   };
 
   const getProgrammes = () => {

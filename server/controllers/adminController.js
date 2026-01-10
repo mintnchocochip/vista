@@ -307,19 +307,34 @@ export async function autoCreatePanels(req, res) {
   try {
     const { programs, school, academicYear, panelSize, facultyList } = req.body;
 
-    const results = await PanelService.autoCreatePanels(
-      programs,
-      school,
-      academicYear,
-      panelSize || 2,
-      req.user._id,
-      facultyList
-    );
+    const allResults = {
+      created: 0,
+      errors: 0,
+      details: [],
+    };
+
+    // Iterate over each program and auto-create panels
+    for (const program of programs) {
+      const result = await PanelService.autoCreatePanels(
+        academicYear,
+        school,
+        program,
+        panelSize || 2,
+        req.user._id,
+        facultyList
+      );
+
+      allResults.created += result.panelsCreated || 0;
+      allResults.errors += result.errors || 0;
+      if (result.details) {
+        allResults.details.push(...result.details);
+      }
+    }
 
     res.status(200).json({
       success: true,
-      message: `Auto-creation complete: ${results.created} panels created, ${results.errors} errors.`,
-      data: results,
+      message: `Auto-creation complete: ${allResults.created} panels created, ${allResults.errors} errors.`,
+      data: allResults,
     });
   } catch (error) {
     res.status(500).json({
@@ -348,7 +363,12 @@ export async function bulkCreatePanels(req, res) {
 
     for (let i = 0; i < panels.length; i++) {
       try {
-        await PanelService.createPanel(panels[i], req.user._id);
+        const panelData = {
+          ...panels[i],
+          memberEmployeeIds:
+            panels[i].memberEmployeeIds || panels[i].facultyEmployeeIds,
+        };
+        await PanelService.createPanel(panelData, req.user._id);
         results.created++;
       } catch (error) {
         results.errors++;
@@ -1659,7 +1679,7 @@ export async function getStudentPerformanceReport(req, res) {
 // ===== PANEL ASSIGNMENT ===== (Already have assignPanelToProject, but need wrapper)
 export async function assignPanelToProject(req, res) {
   try {
-    const { panelId, projectId } = req.body;
+    const { panelId, projectId, ignoreSpecialization } = req.body;
 
     // Fetch project and panel to validate specialization
     const [project, panel] = await Promise.all([
@@ -1674,7 +1694,8 @@ export async function assignPanelToProject(req, res) {
     if (
       panel.specializations &&
       panel.specializations.length > 0 &&
-      !panel.specializations.includes(project.specialization)
+      !panel.specializations.includes(project.specialization) &&
+      !ignoreSpecialization
     ) {
       return res.status(400).json({
         success: false,
@@ -1687,7 +1708,8 @@ export async function assignPanelToProject(req, res) {
     const result = await PanelService.assignPanelToProject(
       panelId,
       projectId,
-      req.user._id
+      req.user._id,
+      ignoreSpecialization // Pass as skipValidation
     );
 
     res.status(200).json({

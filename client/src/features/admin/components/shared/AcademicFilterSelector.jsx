@@ -5,22 +5,18 @@ import Card from "../../../../shared/components/Card";
 import { AcademicCapIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { fetchMasterData } from "../../services/adminApi";
 import { useToast } from "../../../../shared/hooks/useToast";
+import { useAdminContext } from "../../context/AdminContext";
 
 const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
   const [loading, setLoading] = useState(false);
   const [masterData, setMasterData] = useState(null);
   const { showToast } = useToast();
+  const { academicContext, updateAcademicContext } = useAdminContext();
 
   const [options, setOptions] = useState({
     schools: [],
     programs: [],
     years: [],
-  });
-
-  const [filters, setFilters] = useState({
-    school: "",
-    program: "",
-    year: "",
   });
 
   // Fetch master data on mount
@@ -37,12 +33,12 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         const data = response.data;
         setMasterData(data);
 
-        // Set schools options - store both name and code for matching
+        // Set schools options
         const schoolOptions =
           data.schools
             ?.filter((s) => s.isActive !== false)
             ?.map((s) => ({
-              value: s.code, // Use code as value for department matching
+              value: s.code,
               label: s.name,
               name: s.name,
               code: s.code,
@@ -71,15 +67,14 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
     }
   };
 
-  // Update programs when school changes
+  // Update programs when school changes (either from context or user selection)
   useEffect(() => {
-    if (filters.school && masterData) {
-      // Filter programs (departments) by school code
+    if (academicContext.school && masterData) {
       const programsList = masterData.programs || masterData.departments;
       const programs =
         programsList
           ?.filter((d) => {
-            return d.isActive !== false && d.school === filters.school;
+            return d.isActive !== false && d.school === academicContext.school;
           })
           ?.map((d) => ({
             value: d.name,
@@ -92,52 +87,57 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         programs,
       }));
 
-      // Reset dependent filter
-      setFilters((prev) => ({
-        ...prev,
-        program: "",
-      }));
-    } else if (!filters.school) {
-      // Clear programs when no school selected
+      // If program in context is not valid for this school, clear it
+      if (
+        academicContext.program &&
+        !programs.some((p) => p.value === academicContext.program)
+      ) {
+        updateAcademicContext({ program: "" });
+      }
+    } else if (!academicContext.school) {
       setOptions((prev) => ({
         ...prev,
         programs: [],
       }));
     }
-  }, [filters.school, masterData]);
+  }, [academicContext.school, masterData]);
 
   // Notify parent when all filters are selected
   useEffect(() => {
-    if (filters.school && filters.program && filters.year) {
-      // Find school name from code for the callback
+    if (
+      academicContext.school &&
+      academicContext.program &&
+      academicContext.year &&
+      masterData
+    ) {
       const selectedSchool = masterData?.schools?.find(
-        (s) => s.code === filters.school
+        (s) => s.code === academicContext.school
       );
 
       onFilterComplete({
-        school: selectedSchool?.name || filters.school, // Pass school name
-        schoolCode: filters.school, // Pass school code
-        program: filters.program, // Add program field for consistency
+        school: selectedSchool?.name || academicContext.school,
+        schoolCode: academicContext.school,
+        program: academicContext.program,
         programCode: (masterData.programs || masterData.departments)?.find(
-          (p) => p.name === filters.program && p.school === filters.school
-        )?.code, // Robust lookup
-        department: filters.program, // Backend uses 'department' field to store programme data
-        academicYear: filters.year,
-        programme: filters.program, // Also include as programme for clarity
+          (p) =>
+            p.name === academicContext.program &&
+            p.school === academicContext.school
+        )?.code,
+        department: academicContext.program,
+        academicYear: academicContext.year,
+        programme: academicContext.program,
       });
     }
-  }, [filters, onFilterComplete, masterData]);
+  }, [academicContext, onFilterComplete, masterData]);
 
   const handleChange = (key, value) => {
-    const newFilters = { ...filters, [key]: value };
-
-    // Reset dependent filters
+    // Reset dependent filters if school changes
     if (key === "school") {
-      newFilters.program = "";
+      updateAcademicContext({ [key]: value, program: "" });
       setOptions((prev) => ({ ...prev, programs: [] }));
+    } else {
+      updateAcademicContext({ [key]: value });
     }
-
-    setFilters(newFilters);
   };
 
   const steps = [
@@ -146,18 +146,18 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
       key: "program",
       label: "Program",
       options: options.programs,
-      enabled: !!filters.school,
+      enabled: !!academicContext.school,
     },
     {
       key: "year",
       label: "Academic Year",
       options: options.years,
-      enabled: !!filters.school,
+      enabled: !!academicContext.school,
     },
   ];
 
-  const allSelected = steps.every((step) => filters[step.key]);
-  const completedSteps = steps.filter((step) => filters[step.key]).length;
+  const allSelected = steps.every((step) => academicContext[step.key]);
+  const completedSteps = steps.filter((step) => academicContext[step.key]).length;
 
   return (
     <Card className={`sticky top-4 z-30 ${className}`}>
@@ -195,7 +195,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
           <Select
             key={step.key}
             label={step.label}
-            value={filters[step.key]}
+            value={academicContext[step.key]}
             onChange={(value) => handleChange(step.key, value)}
             options={step.options}
             placeholder={
@@ -206,7 +206,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         ))}
       </div>
 
-      {filters.school && options.programs.length === 0 && (
+      {academicContext.school && options.programs.length === 0 && (
         <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
           <p className="text-sm text-yellow-800">
             ⚠️ No programs found for the selected school. Please select a

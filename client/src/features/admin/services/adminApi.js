@@ -533,10 +533,11 @@ export const deletePanel = async (panelId) => {
 /**
  * Assign panel to project
  */
-export const assignPanelToProject = async ({ panelId, projectId }) => {
+export const assignPanelToProject = async ({ panelId, projectId, ignoreSpecialization }) => {
   const response = await api.post("/admin/panels/assign", {
     panelId,
     projectId,
+    ignoreSpecialization,
   });
   return response.data;
 };

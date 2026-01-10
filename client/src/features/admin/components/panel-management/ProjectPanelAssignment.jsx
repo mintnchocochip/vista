@@ -33,6 +33,7 @@ const ProjectPanelAssignment = () => {
   const [selectedPanel, setSelectedPanel] = useState(null);
   const [isAssigning, setIsAssigning] = useState(false);
   const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const [ignoreSpecialization, setIgnoreSpecialization] = useState(false);
   const { showToast } = useToast();
 
   const handleFilterComplete = useCallback((selectedFilters) => {
@@ -84,6 +85,7 @@ const ProjectPanelAssignment = () => {
       const response = await assignPanelToProject({
         projectId: selectedProject._id,
         panelId: selectedPanel._id,
+        ignoreSpecialization,
       });
 
       if (response.success) {
@@ -297,8 +299,8 @@ const ProjectPanelAssignment = () => {
                     key={project._id}
                     onClick={() => setSelectedProject(project)}
                     className={`w-full text-left p-3 rounded-lg border-2 transition-all ${selectedProject?._id === project._id
-                        ? "border-blue-500 bg-blue-50"
-                        : "border-gray-200 bg-white hover:border-blue-300"
+                      ? "border-blue-500 bg-blue-50"
+                      : "border-gray-200 bg-white hover:border-blue-300"
                       }`}
                   >
                     <p className="font-medium text-gray-900">{project.name}</p>
@@ -335,8 +337,8 @@ const ProjectPanelAssignment = () => {
                     key={panel._id}
                     onClick={() => setSelectedPanel(panel)}
                     className={`w-full text-left p-3 rounded-lg border-2 transition-all ${selectedPanel?._id === panel._id
-                        ? "border-green-500 bg-green-50"
-                        : "border-gray-200 bg-white hover:border-green-300"
+                      ? "border-green-500 bg-green-50"
+                      : "border-gray-200 bg-white hover:border-green-300"
                       }`}
                   >
                     <p className="font-medium text-gray-900">
@@ -385,6 +387,22 @@ const ProjectPanelAssignment = () => {
               </div>
             </div>
           )}
+
+          <div className="flex items-center mb-4">
+            <input
+              id="ignore-specialization"
+              type="checkbox"
+              checked={ignoreSpecialization}
+              onChange={(e) => setIgnoreSpecialization(e.target.checked)}
+              className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+            />
+            <label
+              htmlFor="ignore-specialization"
+              className="ml-2 block text-sm text-gray-900"
+            >
+              Ignore Specialization Mismatch
+            </label>
+          </div>
 
           <Button
             onClick={handleManualAssignment}

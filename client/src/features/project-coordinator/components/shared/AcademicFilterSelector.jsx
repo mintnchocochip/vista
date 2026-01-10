@@ -5,15 +5,14 @@ import Card from "../../../../shared/components/Card";
 import { AcademicCapIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
 import { fetchAcademicYears } from "../../services/coordinatorApi";
 import { useAuth } from "../../../../shared/hooks/useAuth";
+import { useCoordinatorContext } from "../../context/CoordinatorContext";
 
 const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
   const [loading, setLoading] = useState(false);
   const [academicYearSemesterOptions, setAcademicYearSemesterOptions] =
     useState([]);
 
-  const [filters, setFilters] = useState({
-    academicYearSemester: "",
-  });
+  const { academicContext, updateAcademicContext } = useCoordinatorContext();
 
   const { user } = useAuth();
 
@@ -77,9 +76,9 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
 
           setAcademicYearSemesterOptions(options);
 
-          // Auto-select first option (newest)
-          if (options.length > 0) {
-            setFilters({ academicYearSemester: options[0].value });
+          // Auto-select first option (newest) if not already selected in context
+          if (options.length > 0 && !academicContext.academicYearSemester) {
+            updateAcademicContext({ academicYearSemester: options[0].value });
           }
         }
       } catch (error) {
@@ -95,32 +94,32 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
 
   // Notify parent when filter is selected
   useEffect(() => {
-    if (filters.academicYearSemester) {
+    if (academicContext.academicYearSemester) {
       const selectedOption = academicYearSemesterOptions.find(
-        (opt) => opt.value === filters.academicYearSemester
+        (opt) => opt.value === academicContext.academicYearSemester
       );
 
       if (selectedOption) {
         onFilterComplete({
           year: selectedOption.originalYear, // Use the full year from backend
           semester: selectedOption.semester,
-          academicYearSemester: filters.academicYearSemester,
+          academicYearSemester: academicContext.academicYearSemester,
           // Removed school/programme from here to prevent loops when user object updates.
           // Parent component should use its own user context for those values.
         });
       }
     }
   }, [
-    filters.academicYearSemester,
+    academicContext.academicYearSemester,
     academicYearSemesterOptions,
     onFilterComplete,
   ]);
 
   const handleChange = (value) => {
-    setFilters({ academicYearSemester: value });
+    updateAcademicContext({ academicYearSemester: value });
   };
 
-  const allSelected = !!filters.academicYearSemester;
+  const allSelected = !!academicContext.academicYearSemester;
 
   return (
     <Card className={`sticky top-4 z-30 ${className}`}>
@@ -174,7 +173,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
         {/* Academic Year & Semester Selection */}
         <Select
           label="Academic Year"
-          value={filters.academicYearSemester}
+          value={academicContext.academicYearSemester}
           onChange={handleChange}
           options={academicYearSemesterOptions}
           placeholder={
