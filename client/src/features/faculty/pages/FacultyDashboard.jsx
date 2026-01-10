@@ -39,17 +39,31 @@ const FacultyDashboard = () => {
                 const data = response.data.data;
 
                 // Process Master Data
+                // Process Master Data
                 const years = data.academicYears.filter(y => y.isActive).map(y => y.year);
                 const schools = data.schools.filter(s => s.isActive).map(s => s.code);
-                const programs = data.programs.filter(p => p.isActive).map(p => p.name);
+                const allPrograms = data.programs.filter(p => p.isActive).map(p => ({
+                    name: p.name,
+                    code: p.code,
+                    school: p.school
+                }));
 
-                setFilterOptions({ years, schools, programs, roles: ['guide', 'panel'] });
+                const initialSchool = schools[0] || '';
+                const initialPrograms = allPrograms.filter(p => p.school === initialSchool);
+
+                setFilterOptions({
+                    years,
+                    schools,
+                    programs: initialPrograms,
+                    allPrograms,
+                    roles: ['guide', 'panel']
+                });
 
                 // Set defaults if available
                 setFilters(prev => ({
                     ...prev,
                     year: years.find(y => y === '2024-2025') || years[0] || '',
-                    school: schools[0] || '',
+                    school: initialSchool,
                     program: 'All Programs',
                     role: 'guide'
                 }));
@@ -62,6 +76,21 @@ const FacultyDashboard = () => {
 
         fetchFilters();
     }, []);
+
+    // Update programs when school changes
+    useEffect(() => {
+        if (filterOptions.allPrograms) {
+            const relevantPrograms = filterOptions.allPrograms.filter(p => p.school === filters.school);
+            setFilterOptions(prev => ({
+                ...prev,
+                programs: relevantPrograms
+            }));
+
+            // Reset program selection if current selection is invalid for new school
+            // But let's keep "All Programs" or reset to "All Programs" for simplicity
+            setFilters(prev => ({ ...prev, program: 'All Programs' }));
+        }
+    }, [filters.school, filterOptions.allPrograms]);
 
     // Workflow State
     const [isInitialized, setIsInitialized] = useState(false);
@@ -136,7 +165,7 @@ const FacultyDashboard = () => {
                                 >
                                     <option>All Programs</option>
                                     {filterOptions.programs.map(program => (
-                                        <option key={program} value={program}>{program}</option>
+                                        <option key={program.code} value={program.code}>{program.name}</option>
                                     ))}
                                 </select>
                             </div>
@@ -214,7 +243,7 @@ const FacultyDashboard = () => {
                 >
                     <option>All Programs</option>
                     {filterOptions.programs.map(program => (
-                        <option key={program} value={program}>{program}</option>
+                        <option key={program.code} value={program.code}>{program.name}</option>
                     ))}
                 </select>
             </div>

@@ -53,6 +53,14 @@ export class MarksService {
 
     const { school, program } = extractPrimaryContext(facultyDoc);
 
+    if (!school || !program) {
+      throw new Error(`Faculty profile incomplete: School or Program missing. (School: ${school}, Program: ${program})`);
+    }
+
+    if (!studentDoc.academicYear) {
+      throw new Error("Student profile incomplete: Academic Year missing.");
+    }
+
     // Create marks
     const marks = new Marks({
       student,

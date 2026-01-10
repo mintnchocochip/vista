@@ -19,8 +19,20 @@ export const useFacultyReviews = (facultyId, filters = {}) => {
 
                 // Fetch Data in Parallel
                 const [schemaRes, projectsRes, marksRes] = await Promise.allSettled([
-                    api.get('/faculty/marking-schema'),
-                    api.get('/faculty/projects'),
+                    api.get('/faculty/marking-schema', {
+                        params: {
+                            academicYear: filters.year,
+                            school: filters.school,
+                            program: filters.program === 'All Programs' ? undefined : filters.program
+                        }
+                    }),
+                    api.get('/faculty/projects', {
+                        params: {
+                            academicYear: filters.year,
+                            school: filters.school,
+                            program: filters.program === 'All Programs' ? undefined : filters.program
+                        }
+                    }),
                     api.get('/faculty/marks')
                 ]);
 
@@ -85,10 +97,11 @@ export const useFacultyReviews = (facultyId, filters = {}) => {
                             name: `Team ${project.name}`,
                             projectTitle: project.name,
                             students: project.students.map(s => ({
-                                id: s._id,
-                                name: s.name,
-                                regNo: s.regNo,
-                                email: s.emailId
+                                student_id: s._id,
+                                student_name: s.name,
+                                roll_no: s.regNo, // Map regNo to roll_no for Modal
+                                email: s.emailId,
+                                profile_image: s.profileImage || null
                             })),
                             marksEntered: allStudentsMarked,
                             guideId: project.guideFaculty?._id
@@ -103,10 +116,9 @@ export const useFacultyReviews = (facultyId, filters = {}) => {
 
                         // Generate appropriate levels (0 to maxMarks)
                         // Heuristic: 0, 25%, 50%, 75%, 100% of Max Marks
-                        // Ensure integers
                         for (let i = 0; i <= steps; i++) {
-                            const val = Math.round((i / steps) * maxMarks);
-                            // Dedup
+                            const val = Math.round((i / steps) * maxMarks * 10) / 10; // Round to 1 decimal if needed, but integers preferred usually
+                            // Dedup (e.g. if maxMarks is small)
                             if (levels.length > 0 && levels[levels.length - 1].score === val) continue;
 
                             let label = 'Fair';
@@ -117,21 +129,20 @@ export const useFacultyReviews = (facultyId, filters = {}) => {
 
                             levels.push({
                                 score: val,
-                                label: label,
-                                description: `Score: ${val} / ${maxMarks}`
+                                label: label
                             });
                         }
 
                         return {
-                            rubricId: comp.componentId || comp._id || comp.name,
-                            componentName: comp.name,
-                            componentDescription: comp.description,
-                            maxMarks: maxMarks,
-                            subComponents: comp.subComponents?.map(sub => ({
-                                subId: sub.name,
+                            rubric_id: comp.componentId || comp._id || comp.name, // snake_case for Modal
+                            component_name: comp.name,
+                            component_description: comp.description || '',
+                            max_marks: maxMarks,
+                            sub_components: comp.subComponents?.map(sub => ({
+                                sub_id: sub.name,
                                 name: sub.name,
                                 description: sub.description,
-                                maxMarks: sub.weight
+                                max_marks: sub.weight
                             })) || [],
                             levels: levels
                         };
@@ -146,7 +157,7 @@ export const useFacultyReviews = (facultyId, filters = {}) => {
                         rubrics: rubrics,
                         teams: relevantTeams
                     };
-                });
+                }).filter(r => r.teams.length > 0);
 
                 // Apply Filters (Client-side)
                 let filteredReviews = adaptedReviews;

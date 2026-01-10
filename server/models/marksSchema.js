@@ -97,7 +97,7 @@ marksSchema.index({ student: 1, academicYear: 1 });
 marksSchema.index({ student: 1, reviewType: 1, facultyType: 1 });
 
 // Pre-save validation
-marksSchema.pre("save", async function (next) {
+marksSchema.pre("save", async function () {
   if (this.facultyType === "guide" && this.isNew) {
     const existingGuideMark = await this.constructor.findOne({
       student: this.student,
@@ -112,7 +112,6 @@ marksSchema.pre("save", async function (next) {
       );
     }
   }
-  next();
 });
 
 const Marks = mongoose.model("Marks", marksSchema);

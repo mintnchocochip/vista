@@ -125,12 +125,16 @@ export async function getMarkingSchema(req, res) {
       });
     }
 
-    const { school, program } = extractPrimaryContext(faculty);
+    let { school, program } = extractPrimaryContext(faculty);
+
+    // Override with query params if provided (for filters)
+    if (req.query.school) school = req.query.school;
+    if (req.query.program && req.query.program !== "All Programs") program = req.query.program;
 
     if (!school || !program) {
       return res.status(400).json({
         success: false,
-        message: "Faculty school or program not set.",
+        message: "School or program not specified.",
       });
     }
 
@@ -164,7 +168,10 @@ export async function getMarkingSchema(req, res) {
  */
 export async function getAssignedProjects(req, res) {
   try {
-    const data = await ProjectService.getFacultyProjects(req.user._id);
+    const data = await ProjectService.getFacultyProjects(
+      req.user._id,
+      req.query
+    );
 
     res.status(200).json({
       success: true,

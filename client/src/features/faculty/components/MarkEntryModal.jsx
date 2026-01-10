@@ -392,82 +392,111 @@ const MarkEntryModal = ({ isOpen, onClose, review, team, onSuccess }) => {
                           ))}
                         </div>
 
-                        <div className="text-center mb-10">
-                          <h3 className="text-3xl font-extrabold text-slate-900 mb-3 tracking-tight">{rubric.component_name}</h3>
-                          <p className="text-slate-500 text-lg max-w-2xl mx-auto leading-relaxed">{rubric.component_description}</p>
+                        <div className="text-center mb-0 px-4 pt-4 shrink-0">
+                          <h3 className="text-xl font-extrabold text-slate-900 mb-1 tracking-tight">{rubric.component_name}</h3>
+
+                          {/* Main Description */}
+                          {rubric.component_description && (
+                            <p className="text-slate-500 text-xs max-w-4xl mx-auto leading-relaxed mb-2 line-clamp-2 hover:line-clamp-none transition-all cursor-default" title={rubric.component_description}>
+                              {rubric.component_description}
+                            </p>
+                          )}
+
+                          {/* Sub-Components List */}
+                          {rubric.sub_components && rubric.sub_components.length > 0 && (
+                            <div className="max-w-3xl mx-auto bg-slate-50 rounded-lg p-2 text-left border border-slate-100 text-xs shadow-sm mb-2">
+                              {/* <h4 className="font-bold text-slate-400 uppercase tracking-wider mb-1 text-[10px]">Criteria</h4> */}
+                              <ul className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
+                                {rubric.sub_components.map((sub, idx) => (
+                                  <li key={idx} className="flex items-start gap-2">
+                                    <span className="flex-shrink-0 w-1 h-1 rounded-full bg-blue-400 mt-1.5"></span>
+                                    <div className="min-w-0 flex-1">
+                                      <span className="font-bold text-slate-700">{sub.name}</span>
+                                      {sub.description && <span className="text-slate-500 mx-1 truncate inline-block max-w-full align-bottom">- {sub.description}</span>}
+                                      {sub.max_marks > 0 && <span className="text-[10px] font-mono bg-slate-200 text-slate-600 px-1 py-0.5 rounded ml-1 float-right">{sub.max_marks}m</span>}
+                                    </div>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
                         </div>
 
                         {/* MARKS GRID */}
-                        <div className={`grid gap-4 mb-8 ${getGridCols(rubric.levels.length)}`} onMouseLeave={() => setHoveredLevel(null)}>
-                          {rubric.levels.map(level => {
-                            const isSelected = selectedLevel === level.score;
-                            const colorClass = getScoreColor(level.score, maxLevel);
-                            return (
-                              <button
-                                key={level.score}
-                                onClick={() => setComponentLevel(activeStudent, rubric.rubric_id, level.score, level.label)}
-                                onMouseEnter={() => setHoveredLevel(level)}
-                                disabled={isBlocked}
-                                className={`
+                        <div className="flex-1 flex flex-col justify-center min-h-0 px-4 mb-2 overflow-y-auto">
+                          <div className={`grid gap-2 ${getGridCols(rubric.levels.length)} max-w-5xl mx-auto w-full`} onMouseLeave={() => setHoveredLevel(null)}>
+                            {rubric.levels.map(level => {
+                              const isSelected = selectedLevel === level.score;
+                              const colorClass = getScoreColor(level.score, maxLevel);
+                              return (
+                                <button
+                                  key={level.score}
+                                  onClick={() => setComponentLevel(activeStudent, rubric.rubric_id, level.score, level.label)}
+                                  onMouseEnter={() => setHoveredLevel(level)}
+                                  disabled={isBlocked}
+                                  className={`
                                         group relative p-5 rounded-2xl border-2 transition-all flex flex-col items-center justify-center text-center
                                         ${isSelected ? `${colorClass} shadow-xl scale-105 z-10 border-current` : 'bg-white border-slate-100 hover:border-blue-300 hover:shadow-lg hover:-translate-y-1'}
                                         ${isBlocked ? 'opacity-40 cursor-not-allowed' : ''}
                                      `}
-                              >
-                                <div className={`text-4xl font-black mb-1 transition-transform group-hover:scale-110 ${isSelected ? 'text-inherit' : 'text-slate-800'}`}>{level.score}</div>
-                                <div className="text-xs uppercase font-bold tracking-wider opacity-70">{level.label}</div>
-                              </button>
-                            )
-                          })}
-                        </div>
+                                >
+                                  <div className={`text-4xl font-black mb-1 transition-transform group-hover:scale-110 ${isSelected ? 'text-inherit' : 'text-slate-800'}`}>{level.score}</div>
+                                  <div className="text-xs uppercase font-bold tracking-wider opacity-70">{level.label}</div>
+                                </button>
+                              )
+                            })}
+                          </div>
 
-                        {/* DESCRIPTION AREA */}
-                        <div className="bg-blue-50/50 rounded-xl p-6 mb-8 min-h-[100px] flex items-center justify-center text-center border border-blue-100/50 transition-all">
-                          {activeLevelInfo ? (
-                            <div className="animate-fadeIn">
-                              <div className="text-sm font-bold text-blue-900 uppercase tracking-wide mb-1 opacity-70">{activeLevelInfo.label} ({activeLevelInfo.score})</div>
-                              {/* Using description if available, else label */}
-                              <div className="text-lg text-slate-700 leading-relaxed font-medium">{activeLevelInfo.description || activeLevelInfo.label}</div>
+                          {/* Bottom: Active Mark Description */}
+                          <div className="shrink-0 mb-1 px-4">
+                            <div className="bg-blue-50/50 rounded-lg p-2 min-h-[40px] flex items-center justify-center text-center border border-blue-100/50 transition-all max-w-4xl mx-auto w-full">
+                              {activeLevelInfo ? (
+                                <div className="animate-fadeIn truncate">
+                                  <span className="text-xs font-bold text-blue-900 uppercase tracking-wide opacity-70 mr-2">{activeLevelInfo.label} ({activeLevelInfo.score}):</span>
+                                  <span className="text-xs text-slate-700 leading-snug font-medium truncate">{activeLevelInfo.description || activeLevelInfo.label}</span>
+                                </div>
+                              ) : (
+                                <div className="text-slate-400 italic text-xs">Select a score</div>
+                              )}
                             </div>
-                          ) : (
-                            <div className="text-slate-400 italic">Hover over a mark to see details</div>
-                          )}
-                        </div>
+                          </div>
 
-                        {/* BOTTOM NAVIGATION */}
-                        <div className="mt-auto flex justify-between items-center sticky bottom-0 bg-white/90 backdrop-blur p-4 rounded-xl border border-slate-100 shadow-sm z-20">
-                          <Button
-                            variant="secondary"
-                            onClick={() => {
-                              if (activeRubricIndex > 0) setActiveRubricIndex(p => p - 1);
-                              else {
-                                const currIdx = team.students.findIndex(s => s.student_id === activeStudent);
-                                if (currIdx > 0) setActiveStudent(team.students[currIdx - 1].student_id);
-                              }
-                            }}
-                            disabled={activeRubricIndex === 0 && team.students[0].student_id === activeStudent}
-                            className="w-32 rounded-full"
-                          >
-                            <ChevronLeftIcon className="w-4 h-4 mr-2" /> Back
-                          </Button>
-                          <div className="text-xs font-bold text-slate-300 uppercase tracking-widest hidden md:block">Navigation</div>
-                          <Button
-                            variant="primary"
-                            onClick={() => {
-                              if (activeRubricIndex < rubrics.length - 1) setActiveRubricIndex(p => p + 1);
-                              else handleNextStudent(team.students.findIndex(s => s.student_id === activeStudent));
-                            }}
-                            className="w-32 rounded-full"
-                          >
-                            {activeRubricIndex === rubrics.length - 1 ? 'Finish' : 'Next'}
-                            <ChevronRightIcon className="w-4 h-4 ml-2" />
-                          </Button>
+                          {/* BOTTOM NAVIGATION */}
+                          <div className="mt-auto flex justify-between items-center sticky bottom-0 bg-white/90 backdrop-blur p-4 rounded-xl border border-slate-100 shadow-sm z-20">
+                            <Button
+                              variant="secondary"
+                              onClick={() => {
+                                if (activeRubricIndex > 0) setActiveRubricIndex(p => p - 1);
+                                else {
+                                  const currIdx = team.students.findIndex(s => s.student_id === activeStudent);
+                                  if (currIdx > 0) setActiveStudent(team.students[currIdx - 1].student_id);
+                                }
+                              }}
+                              disabled={activeRubricIndex === 0 && team.students[0].student_id === activeStudent}
+                              className="w-32 rounded-full"
+                            >
+                              <ChevronLeftIcon className="w-4 h-4 mr-2" /> Back
+                            </Button>
+                            <div className="text-xs font-bold text-slate-300 uppercase tracking-widest hidden md:block">Navigation</div>
+                            <Button
+                              variant="primary"
+                              onClick={() => {
+                                if (activeRubricIndex < rubrics.length - 1) setActiveRubricIndex(p => p + 1);
+                                else handleNextStudent(team.students.findIndex(s => s.student_id === activeStudent));
+                              }}
+                              className="w-32 rounded-full"
+                            >
+                              {activeRubricIndex === rubrics.length - 1 ? 'Finish' : 'Next'}
+                              <ChevronRightIcon className="w-4 h-4 ml-2" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
                     );
                   })()}
                 </div>
-              )}
+              )
+              }
 
               {viewMode === 'dashboard' && (
                 <div className="max-w-4xl mx-auto w-full animate-slideUp">

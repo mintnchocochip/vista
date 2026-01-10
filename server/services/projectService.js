@@ -100,11 +100,17 @@ export class ProjectService {
   /**
    * Get faculty projects (guide + panel)
    */
-  static async getFacultyProjects(facultyId) {
+  static async getFacultyProjects(facultyId, filters = {}) {
+    // Base query for filters
+    const baseQuery = { status: "active" };
+    if (filters.academicYear) baseQuery.academicYear = filters.academicYear;
+    if (filters.school) baseQuery.school = filters.school;
+    if (filters.program) baseQuery.program = filters.program;
+
     // Guide projects
     const guideProjects = await Project.find({
+      ...baseQuery,
       guideFaculty: facultyId,
-      status: "active",
     })
       .populate("students", "name regNo emailId")
       .populate("guideFaculty", "name employeeId emailId")
@@ -126,8 +132,8 @@ export class ProjectService {
     const panelIds = panels.map((p) => p._id);
 
     const panelProjects = await Project.find({
+      ...baseQuery,
       panel: { $in: panelIds },
-      status: "active",
     })
       .populate("students", "name regNo emailId")
       .populate("guideFaculty", "name employeeId emailId")
