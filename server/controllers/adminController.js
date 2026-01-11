@@ -573,6 +573,56 @@ export async function updateAccessRequestStatus(req, res) {
       { reason, grantStartTime, grantEndTime }
     );
 
+    // If approved, automatically enable the permission for the coordinator
+    if (status === "approved" && request) {
+      const coordinator = await ProjectCoordinator.findOne({
+        faculty: request.requestedBy,
+        school: request.school,
+        program: request.program,
+        isActive: true,
+      });
+
+      if (coordinator) {
+        // Ensure the permissions object for this feature exists
+        const currentPerms = coordinator.permissions[request.featureName] || {};
+
+        // Calculate new deadline:
+        // 1. Use provided grantEndTime if available
+        // 2. Else use existing deadline IF it is in the future
+        // 3. Else default to 7 days from now
+        let newDeadline = grantEndTime ? new Date(grantEndTime) : null;
+
+        if (!newDeadline) {
+          const currentDeadline = currentPerms.deadline ? new Date(currentPerms.deadline) : null;
+          if (currentDeadline && currentDeadline > new Date()) {
+            newDeadline = currentDeadline;
+          } else {
+            newDeadline = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+          }
+        }
+
+        coordinator.permissions[request.featureName] = {
+          enabled: true,
+          deadline: newDeadline,
+        };
+
+        // Mark modified since permissions is a nested object/mixed type sometimes
+        coordinator.markModified("permissions");
+        await coordinator.save();
+
+        logger.info("coordinator_permission_auto_enabled", {
+          coordinatorId: coordinator._id,
+          feature: request.featureName,
+          deadline: grantEndTime,
+        });
+      } else {
+        logger.warn("coordinator_not_found_for_request_approval", {
+          facultyId: request.requestedBy,
+          requestId: id,
+        });
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: `Access request ${status} successfully.`,

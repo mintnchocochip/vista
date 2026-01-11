@@ -58,7 +58,7 @@ const StudentManagement = () => {
 
       const response = await apiFetchStudents({
         school: user?.school,
-        department: user?.department,
+        program: user?.program, // Send program explicitly
         academicYear: filters?.year,
       });
 
@@ -147,10 +147,9 @@ const StudentManagement = () => {
                   disabled={isDisabled}
                   className={`
                     flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all
-                    ${
-                      isDisabled
-                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
-                        : isActive
+                    ${isDisabled
+                      ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
+                      : isActive
                         ? "bg-blue-600 text-white shadow-md"
                         : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                     }

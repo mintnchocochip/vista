@@ -65,9 +65,9 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
               <UserGroupIcon className="w-6 h-6 text-green-600 shrink-0" />
               <div>
                 <div className="text-xs font-medium text-gray-500 mb-1">Team Size</div>
-                <div className="text-base font-bold text-gray-900">{project.team.length} Members</div>
+                <div className="text-base font-bold text-gray-900">{project.team?.length || 0} Members</div>
                 <div className="text-xs text-gray-500">
-                  {project.team.map(m => m.name).join(', ')}
+                  {project.team?.map(m => m.name).join(', ') || 'No members'}
                 </div>
               </div>
             </div>
@@ -84,7 +84,7 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
             onChange={(e) => setSelectedStudent(e.target.value)}
             className="w-full px-4 py-2.5 border-2 border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           >
-            {project.team.map(member => (
+            {project.team?.map(member => (
               <option key={member.regNo} value={member.regNo}>
                 {member.name} ({member.regNo})
               </option>
@@ -119,10 +119,10 @@ const ProjectDetailsModal = ({ isOpen, onClose, project }) => {
                         percentage >= 80
                           ? 'bg-green-500'
                           : percentage >= 60
-                          ? 'bg-blue-500'
-                          : percentage >= 40
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500';
+                            ? 'bg-blue-500'
+                            : percentage >= 40
+                              ? 'bg-yellow-500'
+                              : 'bg-red-500';
 
                       return (
                         <div key={compIdx} className="bg-white rounded-lg p-3">

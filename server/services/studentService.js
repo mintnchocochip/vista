@@ -256,6 +256,38 @@ export class StudentService {
       }
     }
 
+    // Calculate Total Marks
+    let totalMarks = 0;
+    let reviewStatuses = [];
+    Object.entries(processedReviews).forEach(([key, review]) => {
+      // Calculate marks
+      if (review.marks) {
+        Object.values(review.marks).forEach((mark) => {
+          totalMarks += Number(mark) || 0;
+        });
+      }
+
+      // Review Status
+      let status = "pending";
+      const hasMarks = review.marks && Object.values(review.marks).some(m => m > 0);
+
+      // This is a simplified check. You might want to check the markingSchema deadlines or 
+      // explicit 'status' field if you added one to reviews schema.
+      // Assuming review is approved if locked or completed.
+      if (review.locked) {
+        status = "approved";
+      } else if (hasMarks) {
+        status = "submitted";
+      } else {
+        status = "pending";
+      }
+
+      reviewStatuses.push({
+        name: key,
+        status: status
+      });
+    });
+
     return {
       _id: student._id,
       regNo: student.regNo,
@@ -274,6 +306,8 @@ export class StudentService {
       isActive: student.isActive,
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,
+      totalMarks, // Added
+      reviewStatuses // Added
     };
   }
 

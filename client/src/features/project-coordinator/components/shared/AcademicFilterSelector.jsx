@@ -30,48 +30,20 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
           const sortedYears = [...response.data].sort().reverse();
 
           sortedYears.forEach((year) => {
-            // Check if year string already contains semester info
+            // Use the year string exactly as provided by the backend
+            // Try to infer semester for metadata if present, but value/label matches backend
             const upperYear = year.toUpperCase();
-            const hasSemester =
-              upperYear.includes("FALL") || upperYear.includes("WINTER");
+            let semesterPart = "Unknown";
 
-            if (hasSemester) {
-              // Backend provided specific semester, use as is
-              // Format: "YYYY-YY SEMESTER"
-              // We need to split this for metadata if possible
-              const parts = year.split(" ");
-              const yearPart = parts[0];
-              // If format is like "2024-25 FALL", yearPart is "2024-25"
-              const semesterPart = upperYear.includes("FALL")
-                ? "Fall"
-                : "Winter";
+            if (upperYear.includes("FALL")) semesterPart = "Fall";
+            else if (upperYear.includes("WINTER")) semesterPart = "Winter";
 
-              options.push({
-                value: year,
-                label: year,
-                originalYear: yearPart,
-                semester: semesterPart,
-              });
-            } else {
-              // Backend provided just year (e.g. "2024-25"), generate both semesters
-              const shortYear =
-                year.length === 7
-                  ? `${year.substring(2, 4)}-${year.substring(5, 7)}`
-                  : year;
-
-              options.push({
-                value: `${shortYear}-fall`,
-                label: `${shortYear} Fall`,
-                originalYear: year,
-                semester: "Fall",
-              });
-              options.push({
-                value: `${shortYear}-winter`,
-                label: `${shortYear} Winter`,
-                originalYear: year,
-                semester: "Winter",
-              });
-            }
+            options.push({
+              value: year,
+              label: year,
+              originalYear: year, // sending full year string as originalYear too
+              semester: semesterPart,
+            });
           });
 
           setAcademicYearSemesterOptions(options);
@@ -101,7 +73,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
 
       if (selectedOption) {
         onFilterComplete({
-          year: selectedOption.originalYear, // Use the full year from backend
+          year: selectedOption.value, // Use the full value (e.g. "2024-2025 winter") to match DB
           semester: selectedOption.semester,
           academicYearSemester: academicContext.academicYearSemester,
           // Removed school/programme from here to prevent loops when user object updates.
@@ -167,7 +139,7 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
             Program
           </label>
           <div className="w-full px-3 py-2 bg-gray-50 border border-gray-300 rounded-lg text-sm text-gray-900 font-medium cursor-not-allowed">
-            {user?.department || "Loading..."}
+            {user?.program || "Loading..."}
           </div>
         </div>
         {/* Academic Year & Semester Selection */}

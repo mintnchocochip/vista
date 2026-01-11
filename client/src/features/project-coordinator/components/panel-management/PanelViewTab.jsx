@@ -42,8 +42,8 @@ const PanelViewTab = ({ isPrimary = false }) => {
 
       const response = await apiFetchPanels({
         school: user?.school,
-        department: user?.department,
-        academicYear: filters?.academicYear,
+        program: user?.program,
+        academicYear: filters?.year,
       });
 
       if (response.success) {

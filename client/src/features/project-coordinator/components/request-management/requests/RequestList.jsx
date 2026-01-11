@@ -38,7 +38,7 @@ const RequestList = () => {
         setLoading(true);
         const response = await fetchRequests({
           school: user?.school,
-          department: user?.department,
+          program: user?.program,
         });
 
         if (response.success) {
@@ -94,10 +94,10 @@ const RequestList = () => {
           prevRequests.map((request) =>
             request.id === requestId || request._id === requestId
               ? {
-                  ...request,
-                  status: "approved",
-                  approvalReason: "Approved by coordinator",
-                }
+                ...request,
+                status: "approved",
+                approvalReason: "Approved by coordinator",
+              }
               : request
           )
         );
@@ -174,8 +174,7 @@ const RequestList = () => {
         const faculty = facultyGroups.find((f) => f.id === selectedFacultyId);
 
         showToast(
-          `Successfully approved ${requestIds.length} request${
-            requestIds.length !== 1 ? "s" : ""
+          `Successfully approved ${requestIds.length} request${requestIds.length !== 1 ? "s" : ""
           } for ${faculty?.name}`,
           "success"
         );

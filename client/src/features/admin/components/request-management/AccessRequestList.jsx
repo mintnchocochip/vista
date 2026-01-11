@@ -57,9 +57,9 @@ const AccessRequestList = () => {
     const filteredRequests = requests.filter((req) => {
         const matchesStatus = statusFilter === "all" || req.status === statusFilter;
         const matchesSearch =
-            req.requestedBy?.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            req.requestedBy?.employeeId?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            req.featureName?.toLowerCase().includes(searchQuery.toLowerCase());
+            (req.requestedBy?.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (req.requestedBy?.employeeId || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (req.featureName || "").toLowerCase().includes(searchQuery.toLowerCase());
 
         return matchesStatus && matchesSearch;
     });
@@ -179,6 +179,14 @@ const AccessRequestList = () => {
         );
     }
 
+    if (error) {
+        return (
+            <div className="p-4 mb-4 text-sm text-red-700 bg-red-100 rounded-lg dark:bg-red-200 dark:text-red-800" role="alert">
+                <span className="font-medium">Error!</span> {error}
+            </div>
+        );
+    }
+
     return (
         <div className="bg-white rounded-lg shadow">
             {/* Header & Filters */}
@@ -251,7 +259,7 @@ const AccessRequestList = () => {
                                     <td className="px-6 py-4 whitespace-nowrap">
                                         <div className="flex flex-col gap-1">
                                             <span className="text-sm text-gray-900 font-medium whitespace-pre-wrap">
-                                                {req.featureName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ')}
+                                                {req.featureName ? req.featureName.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ') : "Unknown Feature"}
                                             </span>
                                             <div>{getPriorityBadge(req.priority)}</div>
                                         </div>

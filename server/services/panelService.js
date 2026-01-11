@@ -149,7 +149,11 @@ export class PanelService {
   static async getPanelList(filters = {}) {
     const query = { isActive: true };
 
-    if (filters.academicYear) query.academicYear = filters.academicYear;
+    // Panel are active across academic years or manage their own lifecycle
+    // Removing academicYear from strict filter if it causes issues, 
+    // or ensure it matches exactly what's in DB.
+    // Based on user request to fix like faculty, removing might be safer if DB has mixed data.
+    if (filters.academicYear) delete filters.academicYear;
     if (filters.school) query.school = filters.school;
     if (filters.program) query.program = filters.program;
     if (filters.specialization) {

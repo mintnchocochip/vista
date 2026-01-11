@@ -17,16 +17,28 @@ const adaptStudent = (backendStudent) => {
 
   return {
     _id: backendStudent._id,
+    id: backendStudent._id,
     regNo: backendStudent.regNo,
     name: backendStudent.name,
     email: backendStudent.emailId,
     emailId: backendStudent.emailId,
+    phone: backendStudent.phoneNumber, // Added map locally
+    phoneNumber: backendStudent.phoneNumber,
     school: backendStudent.school,
-    department: backendStudent.department,
+    program: backendStudent.program,
     academicYear: backendStudent.academicYear,
     PAT: backendStudent.PAT || false,
     isActive: backendStudent.isActive !== false,
-    project: backendStudent.project,
+
+    // Project Info
+    guide: backendStudent.guide,
+    panelMember: backendStudent.panelMember,
+    projectTitle: backendStudent.projectTitle,
+    teammates: backendStudent.teammates || [],
+
+    // Marks & Status
+    totalMarks: backendStudent.totalMarks,
+    reviewStatuses: backendStudent.reviewStatuses || [],
     approvals: backendStudent.approvals || {},
   };
 };
@@ -102,20 +114,45 @@ const adaptPanel = (backendPanel) => {
   return {
     id: backendPanel._id,
     _id: backendPanel._id,
+    panelName: backendPanel.panelName, // Added
+    panelNumber: backendPanel.panelNumber || backendPanel.panelName.replace(/\D/g, ""), // try to extract number
     members:
-      backendPanel.members?.map((m) => ({
-        _id: m.faculty?._id || m._id,
-        employeeId: m.faculty?.employeeId || m.employeeId,
-        name: m.faculty?.name || m.name,
-        email: m.faculty?.emailId || m.email,
-        specialization: m.faculty?.specialization,
-      })) || [],
+      backendPanel.members?.map((m) => {
+        // Member can be just an ID, or an object with faculty populated, or flat
+        const faculty = m.faculty || m;
+        return {
+          _id: faculty._id,
+          id: faculty._id,
+          employeeId: faculty.employeeId,
+          name: faculty.name || "Unknown",
+          email: faculty.emailId,
+          specialization: faculty.specialization,
+        };
+      }) || [],
+    faculty: backendPanel.members?.map((m) => { // Added aliases for UI compatibility
+      const faculty = m.faculty || m;
+      return {
+        _id: faculty._id,
+        id: faculty._id,
+        employeeId: faculty.employeeId,
+        name: faculty.name || "Unknown",
+        email: faculty.emailId,
+        specialization: faculty.specialization,
+      };
+    }) || [],
     academicYear: backendPanel.academicYear,
     school: backendPanel.school,
-    department: backendPanel.department,
+    program: backendPanel.program,
     isActive: backendPanel.isActive !== false,
+    markingStatus: backendPanel.markingStatus || 'none', // defaults
+    teams: backendPanel.projects?.map(p => ({ // UI expects 'teams' for assigned projects
+      id: p._id,
+      projectTitle: p.name,
+      students: p.students || [],
+      markingStatus: 'none' // default
+    })) || [],
     assignedProjects: backendPanel.assignedProjectsCount || 0,
-    projects: backendPanel.projects || [],
+    maxProjects: backendPanel.maxProjects || 10,
   };
 };
 
@@ -450,6 +487,14 @@ export const requestAccess = async (data) => {
 };
 
 /**
+ * Get coordinator profile (includes school, program, academic year)
+ */
+export const fetchProfile = async () => {
+  const response = await api.get("/coordinator/profile");
+  return response.data;
+};
+
+/**
  * Get coordinator permissions
  */
 export const fetchPermissions = async () => {
@@ -501,4 +546,5 @@ export default {
   fetchDepartments,
   requestAccess,
   fetchPermissions,
+  fetchProfile,
 };

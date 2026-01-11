@@ -15,7 +15,7 @@ export function requireRole(...roles) {
     }
 
     // Admin has access to everything
-    if (req.user.role === "admin") {
+    if (req.user.role && req.user.role.toLowerCase() === "admin") {
       return next();
     }
 
@@ -78,8 +78,12 @@ export async function requireProjectCoordinator(req, res, next) {
             coordinator.permissions[featureName] &&
             coordinator.permissions[featureName].enabled
           ) {
-            // Apply deadline from config to coordinator's permission
-            coordinator.permissions[featureName].deadline = deadline;
+            // FIX: Do not overwrite existing deadline if it is set. 
+            // Admin-granted extensions (AccessRequest) allow access BEYOND the global config.
+            // Only apply config deadline if no specific deadline exists.
+            if (!coordinator.permissions[featureName].deadline) {
+              coordinator.permissions[featureName].deadline = deadline;
+            }
           }
         });
       }

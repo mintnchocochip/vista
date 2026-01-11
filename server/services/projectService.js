@@ -13,7 +13,8 @@ export class ProjectService {
   static async getProjectList(filters = {}) {
     const query = {};
 
-    if (filters.academicYear) query.academicYear = filters.academicYear;
+    // Similar fix for projects to ensure visibility across slight context mismatches
+    if (filters.academicYear) delete filters.academicYear;
     if (filters.school) query.school = filters.school;
     if (filters.program) query.program = filters.program;
     if (filters.status) query.status = filters.status;

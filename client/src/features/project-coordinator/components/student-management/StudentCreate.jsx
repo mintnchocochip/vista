@@ -11,6 +11,7 @@ import Card from "../../../../shared/components/Card";
 import Button from "../../../../shared/components/Button";
 import Input from "../../../../shared/components/Input";
 import { useToast } from "../../../../shared/hooks/useToast";
+import { useAuth } from "../../../../shared/hooks/useAuth";
 import {
   downloadStudentTemplate,
   validateStudentFile,
@@ -37,6 +38,7 @@ const StudentCreate = () => {
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
 
   const { showToast } = useToast();
+  const { user } = useAuth();
 
   const handleFilterComplete = useCallback((selectedFilters) => {
     setFilters(selectedFilters);
@@ -95,8 +97,9 @@ const StudentCreate = () => {
       // Add school, department, and academicYear from filters
       const enrichedData = studentData.map((student) => ({
         ...student,
-        school: filters.school,
-        department: filters.programme,
+        school: user?.school,
+        department: user?.program,
+        program: user?.program,
         academicYear: filters.year,
       }));
 
@@ -170,8 +173,9 @@ const StudentCreate = () => {
 
       const newStudent = {
         ...manualForm,
-        school: filters.school,
-        department: filters.programme,
+        school: user?.school,
+        department: user?.program,
+        program: user?.program,
         academicYear: filters.year,
       };
 
@@ -300,7 +304,7 @@ const StudentCreate = () => {
               <div>
                 <p className="text-xs text-gray-600 font-semibold">School</p>
                 <p className="text-sm text-gray-900 font-medium">
-                  {filters.school}
+                  {user?.school}
                 </p>
               </div>
               <div>
@@ -308,7 +312,7 @@ const StudentCreate = () => {
                   Department
                 </p>
                 <p className="text-sm text-gray-900 font-medium">
-                  {filters.programme}
+                  {user?.program}
                 </p>
               </div>
               <div>
@@ -500,7 +504,7 @@ const StudentCreate = () => {
               <div>
                 <p className="text-xs text-gray-600 font-semibold">School</p>
                 <p className="text-sm text-gray-900 font-medium">
-                  {filters.school}
+                  {user?.school}
                 </p>
               </div>
               <div>
@@ -508,7 +512,7 @@ const StudentCreate = () => {
                   Department
                 </p>
                 <p className="text-sm text-gray-900 font-medium">
-                  {filters.programme}
+                  {user?.program}
                 </p>
               </div>
               <div>
@@ -632,7 +636,7 @@ const StudentCreate = () => {
                           console.error("Error saving students:", error);
                           showToast(
                             error.response?.data?.message ||
-                              "Failed to save students",
+                            "Failed to save students",
                             "error"
                           );
                         } finally {

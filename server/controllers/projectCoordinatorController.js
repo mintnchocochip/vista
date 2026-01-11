@@ -47,7 +47,20 @@ function verifyContext(item, coordinator) {
 
 export async function getProfile(req, res) {
   try {
-    const coordinator = await ProjectCoordinator.findById(req.coordinator._id)
+    // Handle case where user might be coordinator for multiple contexts
+    let coordinatorId;
+    if (req.coordinator) {
+      coordinatorId = req.coordinator._id;
+    } else if (req.coordinators && req.coordinators.length > 0) {
+      coordinatorId = req.coordinators[0]._id; // Default to first for profile view
+    } else {
+      return res.status(404).json({
+        success: false,
+        message: "No active coordinator profile found",
+      });
+    }
+
+    const coordinator = await ProjectCoordinator.findById(coordinatorId)
       .populate("faculty", "name emailId employeeId")
       .lean();
 
@@ -166,7 +179,14 @@ export async function getFacultyList(req, res) {
   try {
     const context = getCoordinatorContext(req);
     const filters = { ...req.query, ...context };
-    if (req.query.academicYear) filters.academicYear = req.query.academicYear;
+
+    // Faculty are not bound by academic year, so remove it from filters
+    if (filters.academicYear) delete filters.academicYear;
+
+    // Use regex for name search if provided
+    if (req.query.name) {
+      filters.name = new RegExp(req.query.name, 'i');
+    }
 
     const faculties = await Faculty.find(filters)
       .select("-password")
@@ -1431,8 +1451,8 @@ export async function getPanelSummary(req, res) {
     const avgFacultyPerPanel =
       totalPanels > 0
         ? (
-            panels.reduce((sum, p) => sum + p.members.length, 0) / totalPanels
-          ).toFixed(1)
+          panels.reduce((sum, p) => sum + p.members.length, 0) / totalPanels
+        ).toFixed(1)
         : 0;
 
     const avgProjectsPerPanel =
@@ -2390,8 +2410,8 @@ export async function getPrograms(req, res) {
 
     const programs = masterData.programs
       ? masterData.programs
-          .filter((p) => p.school === school)
-          .map((p) => ({ name: p.name, code: p.code }))
+        .filter((p) => p.school === school)
+        .map((p) => ({ name: p.name, code: p.code }))
       : [];
 
     res.status(200).json({
