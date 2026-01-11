@@ -327,6 +327,28 @@ export const bulkCreateProjects = async (projectsList) => {
  */
 export const fetchProjectMarks = async (projectId) => {
   const response = await api.get(`/coordinator/projects/${projectId}/marks`);
+  if (response.data.success) {
+    const marks = response.data.data || [];
+    const marksByStudent = {};
+
+    marks.forEach((mark) => {
+      // Ensure student is populated
+      if (mark.student && mark.student.regNo) {
+        const regNo = mark.student.regNo;
+        if (!marksByStudent[regNo]) marksByStudent[regNo] = [];
+
+        marksByStudent[regNo].push({
+          reviewName: mark.reviewType || "Review",
+          facultyType: mark.facultyType,
+          components: mark.componentMarks || [],
+          totalMarks: mark.totalMarks || 0,
+          maxTotalMarks: mark.maxTotalMarks || 0,
+          isSubmitted: mark.isSubmitted || false,
+        });
+      }
+    });
+    return { success: true, marksByStudent };
+  }
   return response.data;
 };
 

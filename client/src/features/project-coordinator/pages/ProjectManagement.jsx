@@ -5,7 +5,7 @@ import Navbar from "../../../shared/components/Navbar";
 import CoordinatorTabs from "../components/shared/CoordinatorTabs";
 import AcademicFilterSelector from "../components/shared/AcademicFilterSelector";
 import ProjectViewTab from "../components/project-management/ProjectViewTab";
-import ProjectCreation from "../components/project-management/ProjectCreation";
+import ProjectUploadTab from "../components/project-management/ProjectUploadTab";
 import Card from "../../../shared/components/Card";
 import { useToast } from "../../../shared/hooks/useToast";
 import { useAuth } from "../../../shared/hooks/useAuth";
@@ -190,7 +190,7 @@ const ProjectManagement = () => {
           </div>
         )}
 
-        {activeTab === "create" && isPrimary && <ProjectCreation />}
+        {activeTab === "create" && isPrimary && <ProjectUploadTab />}
       </div>
     </div>
   );

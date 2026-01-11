@@ -800,10 +800,7 @@ export async function createProject(req, res) {
     res.status(201).json({
       success: true,
       message: "Project created successfully.",
-      data: {
-        projectId: project._id,
-        name: project.name,
-      },
+      data: project,
     });
   } catch (error) {
     res.status(400).json({
@@ -815,41 +812,34 @@ export async function createProject(req, res) {
 
 export async function createProjectsBulk(req, res) {
   try {
-    const context = getCoordinatorContext(req);
     const { projects } = req.body;
 
     if (!Array.isArray(projects) || projects.length === 0) {
       return res.status(400).json({
         success: false,
-        message: "Please provide an array of projects.",
+        message: "Projects array is required and cannot be empty.",
       });
     }
 
-    // Enrich projects with context
-    const enrichedProjects = projects.map((p) => ({
+    const context = getCoordinatorContext(req);
+
+    // Enrich projects with coordinator context
+    const enrichedProjects = projects.map(p => ({
       ...p,
       academicYear: context.academicYear,
       school: context.school,
-      program: context.program,
+      program: context.program
     }));
 
-    const results = await ProjectService.createProjectsBulk(
-      enrichedProjects,
-      req.user._id
-    );
-
-    logger.info("bulk_projects_created_by_coordinator", {
-      count: results.created,
-      coordinatorId: req.coordinator._id,
-    });
+    const result = await ProjectService.bulkCreateProjects(enrichedProjects, req.user._id);
 
     res.status(200).json({
       success: true,
-      message: `Bulk creation completed. Created: ${results.created}, Failed: ${results.failed}`,
-      data: results,
+      message: `Bulk creation complete: ${result.created} created, ${result.failed} errors.`,
+      data: result,
     });
   } catch (error) {
-    res.status(400).json({
+    res.status(500).json({
       success: false,
       message: error.message,
     });
@@ -2501,6 +2491,7 @@ export async function getProjectMarks(req, res) {
 
     const marks = await Marks.find({ project: id })
       .populate("faculty", "name employeeId")
+      .populate("student", "regNo name")
       .lean();
 
     res.status(200).json({

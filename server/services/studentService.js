@@ -56,6 +56,26 @@ export class StudentService {
     if (filters.regNo) query.regNo = new RegExp(filters.regNo, "i");
     if (filters.name) query.name = new RegExp(filters.name, "i");
 
+    // Fetch schema map if context is available
+    let reviewTypes = null;
+    if (filters.school && filters.program && filters.academicYear) {
+      try {
+        const schema = await MarkingSchema.findOne({
+          school: filters.school,
+          program: filters.program,
+          academicYear: filters.academicYear
+        });
+        if (schema && schema.reviews) {
+          reviewTypes = new Map();
+          schema.reviews.forEach(r => {
+            reviewTypes.set(r.reviewName, r.facultyType);
+          });
+        }
+      } catch (err) {
+        logger.error("Error fetching schema for student list marks calculation", err);
+      }
+    }
+
     const students = await Student.find(query).sort({ regNo: 1 }).lean();
 
     // Get all student IDs
@@ -67,36 +87,40 @@ export class StudentService {
       status: "active"
     })
       .populate("guideFaculty", "name")
-      .populate("panel", "panelName")
+      .populate("panel", "panelName") // Populating panel name
       .lean();
 
     // Create a map of studentId -> project details
     const studentProjectMap = {};
-    projects.forEach(project => {
-      project.students.forEach(sId => {
-        const studentIdStr = sId.toString();
-        // Get teammates (exclude self)
-        const teammates = project.students
-          .filter(id => id.toString() !== studentIdStr)
-          .map(id => {
-            const teammate = students.find(s => s._id.toString() === id.toString());
-            return teammate ? { id: teammate._id, name: teammate.name } : null;
-          })
-          .filter(Boolean);
+    if (projects) {
+      projects.forEach(project => {
+        if (!project.students) return;
+        project.students.forEach(sId => {
+          if (!sId) return;
+          const studentIdStr = sId.toString();
+          // Get teammates (exclude self)
+          const teammates = project.students
+            .filter(id => id && id.toString() !== studentIdStr)
+            .map(id => {
+              const teammate = students.find(s => s._id.toString() === id.toString());
+              return teammate ? { id: teammate._id, name: teammate.name } : null;
+            })
+            .filter(Boolean);
 
-        studentProjectMap[studentIdStr] = {
-          guide: project.guideFaculty?.name || "N/A",
-          panelMember: project.panel?.panelName || "N/A",
-          projectTitle: project.name || null,
-          teammates
-        };
+          studentProjectMap[studentIdStr] = {
+            guide: project.guideFaculty ? project.guideFaculty.name : "N/A",
+            panelMember: project.panel ? project.panel.panelName : "N/A",
+            projectTitle: project.name || null,
+            teammates
+          };
+        });
       });
-    });
+    }
 
     return students.map((student) => {
       const projectDetails = studentProjectMap[student._id.toString()] || {};
       return {
-        ...this.processStudentData(student),
+        ...this.processStudentData(student, reviewTypes),
         guide: projectDetails.guide || "N/A",
         panelMember: projectDetails.panelMember || "N/A",
         projectTitle: projectDetails.projectTitle,
@@ -224,8 +248,10 @@ export class StudentService {
 
   /**
    * Process student data (convert Maps to Objects)
+   * @param {Object} student - Student document
+   * @param {Map} reviewTypes - Map of reviewName -> facultyType
    */
-  static processStudentData(student) {
+  static processStudentData(student, reviewTypes = null) {
     // Process reviews Map
     let processedReviews = {};
     if (student.reviews) {
@@ -256,24 +282,47 @@ export class StudentService {
       }
     }
 
-    // Calculate Total Marks
+    // Calculate Marks Breakdown
     let totalMarks = 0;
+    let guideMarks = 0;
+    let panelMarks = 0;
     let reviewStatuses = [];
+
     Object.entries(processedReviews).forEach(([key, review]) => {
-      // Calculate marks
+      // Calculate marks for this review
+      let reviewTotal = 0;
       if (review.marks) {
         Object.values(review.marks).forEach((mark) => {
-          totalMarks += Number(mark) || 0;
+          reviewTotal += Number(mark) || 0;
         });
+      }
+      totalMarks += reviewTotal;
+
+      // Add to specific bucket if reviewTypes map is provided
+      if (reviewTypes && reviewTypes.has(key)) {
+        const type = reviewTypes.get(key);
+        if (type === 'guide') {
+          guideMarks += reviewTotal;
+        } else if (type === 'panel') {
+          panelMarks += reviewTotal;
+        } else if (type === 'both') {
+          // If 'both', usually separate components, but without component-level mapping
+          // we can't split easily. For now, maybe 50-50? 
+          // Or just add to total and leave breakdown ambiguous?
+          // Let's assume 'both' counts towards total but maybe not specifically guide/panel buckets?
+          // OR, assume it's shared.
+          // For simplicity in this fix, we won't add to guide/panel buckets to avoid double counting
+          // or we could split it. Let's start with strict mapping.
+        }
+      } else {
+        // Fallback or legacy logic if needed
+        // Without schema, we can't know.
       }
 
       // Review Status
       let status = "pending";
       const hasMarks = review.marks && Object.values(review.marks).some(m => m > 0);
 
-      // This is a simplified check. You might want to check the markingSchema deadlines or 
-      // explicit 'status' field if you added one to reviews schema.
-      // Assuming review is approved if locked or completed.
       if (review.locked) {
         status = "approved";
       } else if (hasMarks) {
@@ -306,8 +355,13 @@ export class StudentService {
       isActive: student.isActive,
       createdAt: student.createdAt,
       updatedAt: student.updatedAt,
-      totalMarks, // Added
-      reviewStatuses // Added
+      totalMarks,
+      marks: {
+        total: totalMarks,
+        guide: guideMarks,
+        panel: panelMarks
+      },
+      reviewStatuses
     };
   }
 
