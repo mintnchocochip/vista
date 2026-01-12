@@ -175,11 +175,20 @@ const PCModificationSettings = ({ filters }) => {
 
             // Filter by panel
             const panelProjs = allProjects.filter(p => {
-                const panelMembers = p.panel?.members || [];
-                return panelMembers.some(m =>
+                const mainPanelMembers = p.panel?.members || [];
+                const isMainPanel = mainPanelMembers.some(m =>
                     m.faculty?.employeeId === selectedFaculty.employeeId ||
                     m.employeeId === selectedFaculty.employeeId
                 );
+
+                const isReviewPanel = p.reviewPanels?.some(rp =>
+                    rp.panel?.members?.some(m =>
+                        m.faculty?.employeeId === selectedFaculty.employeeId ||
+                        m.employeeId === selectedFaculty.employeeId
+                    )
+                );
+
+                return isMainPanel || isReviewPanel;
             });
             setPanelProjects(panelProjs);
         } else {

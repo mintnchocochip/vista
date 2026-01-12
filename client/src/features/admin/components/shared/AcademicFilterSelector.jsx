@@ -71,10 +71,18 @@ const AcademicFilterSelector = ({ onFilterComplete, className = "" }) => {
   useEffect(() => {
     if (academicContext.school && masterData) {
       const programsList = masterData.programs || masterData.departments;
+      // robustness: check both code and name
+      const schoolObj = masterData.schools?.find(s => s.code === academicContext.school);
+      const schoolName = schoolObj?.name;
+      const schoolCode = schoolObj?.code;
+
       const programs =
         programsList
           ?.filter((d) => {
-            return d.isActive !== false && d.school === academicContext.school;
+            return (
+              d.isActive !== false &&
+              (d.school === schoolCode || d.school === schoolName)
+            );
           })
           ?.map((d) => ({
             value: d.name,

@@ -89,25 +89,59 @@ export class ProjectService {
       .populate("guideFaculty", "name employeeId emailId")
       .populate("panel")
       .populate("panel.members.faculty", "name employeeId emailId")
+      .populate({
+        path: "reviewPanels.panel",
+        populate: {
+          path: "members.faculty",
+          select: "name employeeId emailId"
+        }
+      })
       .lean();
 
     // Group by panel
     const grouped = {};
     projects.forEach((project) => {
-      if (!project.panel) return;
-
-      const panelId = project.panel._id.toString();
-      if (!grouped[panelId]) {
-        grouped[panelId] = {
-          panelId: project.panel._id,
-          members: project.panel.members,
-          venue: project.panel.venue,
-          school: project.panel.school,
-          program: project.panel.program,
-          projects: [],
-        };
+      // Handle Main Panel
+      if (project.panel) {
+        const panelId = project.panel._id.toString();
+        if (!grouped[panelId]) {
+          grouped[panelId] = {
+            panelId: project.panel._id,
+            members: project.panel.members,
+            venue: project.panel.venue,
+            school: project.panel.school,
+            program: project.panel.program,
+            projects: [],
+          };
+        }
+        grouped[panelId].projects.push({ ...project, assignmentType: "Regular" });
       }
-      grouped[panelId].projects.push(project);
+
+      // Handle Review Panels
+      if (project.reviewPanels && project.reviewPanels.length > 0) {
+        project.reviewPanels.forEach(rp => {
+          if (rp.panel) {
+            const rpId = rp.panel._id.toString();
+            // Initialize group if not exists
+            if (!grouped[rpId]) {
+              grouped[rpId] = {
+                panelId: rp.panel._id,
+                members: rp.panel.members,
+                venue: rp.panel.venue,
+                school: rp.panel.school,
+                program: rp.panel.program,
+                projects: []
+              };
+            }
+
+            // Add project if not already present (avoid duplicates if main panel == review panel by ID, but distinct by role)
+            const alreadyAdded = grouped[rpId].projects.some(p => p._id.toString() === project._id.toString() && p.assignmentType === "Review");
+            if (!alreadyAdded) {
+              grouped[rpId].projects.push({ ...project, assignmentType: "Review", reviewType: rp.reviewType });
+            }
+          }
+        });
+      }
     });
 
     return Object.values(grouped);

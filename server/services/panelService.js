@@ -259,7 +259,6 @@ export class PanelService {
 
     // Verify same academic context
     if (
-      panel.academicYear !== project.academicYear ||
       panel.school !== project.school ||
       panel.program !== project.program
     ) {
@@ -364,16 +363,21 @@ export class PanelService {
     };
 
     try {
-      // Get program config
+      // Trim inputs
+      const safeSchool = school?.trim();
+      const safeProgram = program?.trim();
+      const safeYear = academicYear?.trim();
+
+      // Get program config with case-insensitive search
       const config = await ProgramConfig.findOne({
-        academicYear,
-        school,
-        program,
+        academicYear: safeYear,
+        school: { $regex: new RegExp(`^${safeSchool}$`, "i") },
+        program: { $regex: new RegExp(`^${safeProgram}$`, "i") },
       });
 
       if (!config) {
         throw new Error(
-          `Program configuration not found for ${school} - ${program}`
+          `Program configuration not found for ${safeSchool} - ${safeProgram} (${safeYear})`
         );
       }
 
@@ -506,14 +510,29 @@ export class PanelService {
     };
 
     // 1. Fetch all active panels for this context
+    const safeSchool = school?.trim();
+    const safeProgram = program?.trim();
+    const safeYear = academicYear?.trim();
+
     let allPanels = await Panel.find({
-      academicYear,
-      school,
-      program,
+      school: { $regex: new RegExp(`^${safeSchool}$`, "i") },
+      program: { $regex: new RegExp(`^${safeProgram}$`, "i") },
       isActive: true,
     })
       .populate("members.faculty", "employeeId")
       .lean();
+
+    if (allPanels.length === 0) {
+      return {
+        ...results,
+        errors: projects.length,
+        details: [
+          {
+            error: `No active panels found for ${safeSchool} - ${safeProgram} (${safeYear}). Please create panels first.`,
+          },
+        ],
+      };
+    }
 
     // 2. Calculate experience score for each panel
     // Score = Sum of numeric part of employeeIds of members

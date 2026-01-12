@@ -472,7 +472,7 @@ export async function autoAssignPanelsToProjects(req, res) {
 
     res.status(200).json({
       success: true,
-      message: `Auto-assignment complete: ${results.assigned} projects assigned, ${results.errors} errors.`,
+      message: `Auto-assignment complete: ${results.projectsAssigned} projects assigned, ${results.errors} errors.`,
       data: results,
     });
   } catch (error) {
