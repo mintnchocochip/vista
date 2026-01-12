@@ -531,34 +531,53 @@ const PCModificationSettings = ({ filters }) => {
                                         <p className="text-sm text-gray-500 pl-4">No projects as panel member</p>
                                     ) : (
                                         <div className="space-y-2">
-                                            {panelProjects.map((project) => (
-                                                <div
-                                                    key={project._id}
-                                                    onClick={() => toggleProjectSelection(project._id, 'panel')}
-                                                    className={`p-3 border rounded-lg cursor-pointer transition-all ${isProjectSelected(project._id)
-                                                        ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
-                                                        : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
-                                                        }`}
-                                                >
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-3">
-                                                            <input
-                                                                type="checkbox"
-                                                                checked={isProjectSelected(project._id)}
-                                                                onChange={() => { }}
-                                                                className="w-4 h-4 text-purple-600 rounded border-gray-300"
-                                                            />
-                                                            <div>
-                                                                <p className="font-medium text-gray-900">{project.name}</p>
-                                                                <p className="text-xs text-gray-500">
-                                                                    Panel: {project.panel?.panelName || 'Unknown'}
-                                                                </p>
+                                            {panelProjects.map((project) => {
+                                                const isMainPanel = project.panel?.members?.some(m =>
+                                                    m.faculty?.employeeId === selectedFaculty.employeeId ||
+                                                    m.employeeId === selectedFaculty.employeeId
+                                                );
+
+                                                const isReviewPanel = project.reviewPanels?.some(rp =>
+                                                    rp.panel?.members?.some(m =>
+                                                        m.faculty?.employeeId === selectedFaculty.employeeId ||
+                                                        m.employeeId === selectedFaculty.employeeId
+                                                    )
+                                                );
+
+                                                return (
+                                                    <div
+                                                        key={project._id}
+                                                        onClick={() => toggleProjectSelection(project._id, 'panel')}
+                                                        className={`p-3 border rounded-lg cursor-pointer transition-all ${isProjectSelected(project._id)
+                                                            ? 'border-purple-500 bg-purple-50 ring-2 ring-purple-200'
+                                                            : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'
+                                                            }`}
+                                                    >
+                                                        <div className="flex items-center justify-between">
+                                                            <div className="flex items-center gap-3">
+                                                                <input
+                                                                    type="checkbox"
+                                                                    checked={isProjectSelected(project._id)}
+                                                                    onChange={() => { }}
+                                                                    className="w-4 h-4 text-purple-600 rounded border-gray-300"
+                                                                />
+                                                                <div>
+                                                                    <p className="font-medium text-gray-900">{project.name}</p>
+                                                                    <p className="text-xs text-gray-500">
+                                                                        Panel: {project.panel?.panelName || 'Unknown'}
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-2">
+                                                                {!isMainPanel && isReviewPanel && (
+                                                                    <Badge variant="warning" size="sm">Review Panel</Badge>
+                                                                )}
+                                                                <Badge variant="success" size="sm">{project.status}</Badge>
                                                             </div>
                                                         </div>
-                                                        <Badge variant="success" size="sm">{project.status}</Badge>
                                                     </div>
-                                                </div>
-                                            ))}
+                                                );
+                                            })}
                                         </div>
                                     )}
                                 </div>
