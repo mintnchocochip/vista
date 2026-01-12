@@ -362,7 +362,9 @@ const ModificationSettings = () => {
                 students: project.students?.map(s => s.name || s.regNo) || [],
                 status: project.status,
                 specialization: project.specialization,
-                panelName: panelGroup.panelName || `Panel ${panelGroup.panelId?.toString().slice(-4) || 'Unknown'}`
+                panelName: panelGroup.panelName || `Panel ${panelGroup.panelId?.toString().slice(-4) || 'Unknown'}`,
+                assignmentType: project.assignmentType, // Capture assignment type
+                reviewType: project.reviewType // Capture review type
               });
             });
           }
@@ -727,9 +729,9 @@ const ModificationSettings = () => {
                     <p className="text-sm text-gray-500 pl-4">No projects as panel member</p>
                   ) : (
                     <div className="space-y-2">
-                      {panelProjects.map((project) => (
+                      {panelProjects.map((project, idx) => (
                         <div
-                          key={project._id}
+                          key={`${project._id}-${idx}`} // Unique key for potential duplicates across roles
                           onClick={() => toggleProjectSelection(project._id, 'panel')}
                           className={`p-3 border rounded-lg cursor-pointer transition-all ${isProjectSelected(project._id)
                             ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200'
@@ -751,7 +753,19 @@ const ModificationSettings = () => {
                                 </p>
                               </div>
                             </div>
-                            <Badge variant="success" size="sm">{project.status}</Badge>
+                            <div className="flex items-center gap-2">
+                              {project.assignmentType === 'Review' && (
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                  {project.reviewType || 'Review'}
+                                </span>
+                              )}
+                              {(!project.assignmentType || project.assignmentType === 'Regular') && (
+                                <span className="px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 border border-blue-200">
+                                  Main Panel
+                                </span>
+                              )}
+                              <Badge variant="success" size="sm">{project.status}</Badge>
+                            </div>
                           </div>
                         </div>
                       ))}
@@ -941,7 +955,7 @@ const ModificationSettings = () => {
           </div>
         </div>
       </Modal>
-    </div>
+    </div >
   );
 };
 
