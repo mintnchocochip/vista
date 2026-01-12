@@ -5,16 +5,8 @@ import api from '../../../services/api';
  * @returns {Promise<Array>} List of reviews
  */
 export const getFacultyReviews = async () => {
-  const response = await api.get("/faculty/reviews"); // Assuming this endpoint exists or will be mapped
-  // If the backend endpoint is actually /faculty/projects or similar that returns reviews structure, we might need to adapt.
-  // Based on facultyRoutes.js, we have /faculty/projects and /faculty/marks.
-  // There isn't a direct /faculty/reviews endpoint yet in the route file I saw.
-  // However, I will implement this and if it fails, I will add the endpoint to the backend or use existing ones.
-  // For now, let's assume we might need to fetch projects and adapt them as "reviews" or the backend has been updated.
-  // Wait, the user said "check if the context is working".
-  // Let's try to use the existing endpoints if possible.
-  // getAssignedProjects seems relevant.
-  return response.data;
+  const response = await api.get("/faculty/reviews");
+  return response.data.data; // Return the actual array of reviews
 };
 
 /**
@@ -40,5 +32,15 @@ export const createReview = async (reviewData) => {
 
 export const getComponentLibrary = async (params) => {
   const response = await api.get("/admin/component-library", { params });
+  return response.data;
+};
+
+export const getEvaluationMetadata = async () => {
+  const response = await api.get("/faculty/evaluation-metadata");
+  return response.data;
+};
+
+export const getAcademicYears = async () => {
+  const response = await api.get("/faculty/academic-years");
   return response.data;
 };

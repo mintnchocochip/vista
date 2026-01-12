@@ -41,8 +41,21 @@ const MarkEntryModal = ({ isOpen, onClose, review, team, onSuccess }) => {
     const initMarks = {};
     const initMeta = {};
     team.students.forEach(s => {
-      initMarks[s.student_id] = {};
-      initMeta[s.student_id] = { ...DEFAULT_META };
+      // Map existing marks if available for editing
+      const studentMarks = {};
+      if (s.existingMarks && Array.isArray(s.existingMarks)) {
+        s.existingMarks.forEach(em => {
+          studentMarks[em.componentId] = em.marks;
+        });
+      }
+      initMarks[s.student_id] = studentMarks;
+
+      initMeta[s.student_id] = {
+        ...DEFAULT_META,
+        comment: s.existingMeta?.comment?.replace(/^\[ABSENT\]\s*|^\[PAT\]\s*|\|\s*Team Feedback:.*|\|\s*PPT Approved/g, '').trim() || '',
+        attendance: s.existingMeta?.comment?.includes('[ABSENT]') ? 'absent' : 'present',
+        pat: s.existingMeta?.comment?.includes('[PAT]') ? true : false
+      };
     });
     setMarks(initMarks);
     setMeta(initMeta);
@@ -397,9 +410,22 @@ const MarkEntryModal = ({ isOpen, onClose, review, team, onSuccess }) => {
 
                           {/* Main Description */}
                           {rubric.component_description && (
-                            <p className="text-slate-500 text-xs max-w-4xl mx-auto leading-relaxed mb-2 line-clamp-2 hover:line-clamp-none transition-all cursor-default" title={rubric.component_description}>
-                              {rubric.component_description}
-                            </p>
+                            <div
+                              className="text-slate-500 text-xs max-w-4xl mx-auto leading-relaxed mb-2 line-clamp-2 hover:line-clamp-none transition-all cursor-default"
+                              title={Array.isArray(rubric.component_description)
+                                ? rubric.component_description.map(c => c.label).join(', ')
+                                : String(rubric.component_description)}
+                            >
+                              {Array.isArray(rubric.component_description)
+                                ? rubric.component_description.map((c, i) => (
+                                  <span key={i} className="inline-block mr-2">
+                                    <span className="font-medium text-slate-700">{c.label}</span>
+                                    {c.marks && <span className="ml-1 text-slate-400">({c.marks}m)</span>}
+                                    {i < rubric.component_description.length - 1 && <span className="text-slate-300"> • </span>}
+                                  </span>
+                                ))
+                                : rubric.component_description}
+                            </div>
                           )}
 
                           {/* Sub-Components List */}
@@ -576,7 +602,7 @@ const MarkEntryModal = ({ isOpen, onClose, review, team, onSuccess }) => {
             </div>
           </div>
         </div>
-        <style jsx>{`
+        <style>{`
           @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
           @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
           .animate-fadeIn { animation: fadeIn 0.3s ease-out forwards; }

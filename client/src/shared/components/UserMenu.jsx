@@ -6,6 +6,7 @@ import {
   ChevronDownIcon,
   ArrowRightOnRectangleIcon,
   AcademicCapIcon,
+  UserGroupIcon
 } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 
@@ -37,9 +38,8 @@ const UserMenu = ({ user, onChangePassword, onLogout }) => {
           <p className="text-xs text-gray-500">{user.email}</p>
         </div>
         <ChevronDownIcon
-          className={`w-4 h-4 text-gray-500 transition-transform ${
-            isOpen ? "rotate-180" : ""
-          }`}
+          className={`w-4 h-4 text-gray-500 transition-transform ${isOpen ? "rotate-180" : ""
+            }`}
         />
       </button>
 

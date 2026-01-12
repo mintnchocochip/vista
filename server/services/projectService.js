@@ -173,22 +173,42 @@ export class ProjectService {
       })
       .lean();
 
-    // Panel projects
+    // Panel projects (where faculty is in main panel OR review-specific panel)
+    let empId = facultyId;
+    if (mongoose.Types.ObjectId.isValid(facultyId)) {
+      const faculty = await Faculty.findById(facultyId).select("employeeId");
+      if (faculty?.employeeId) empId = faculty.employeeId;
+    }
+
     const panels = await Panel.find({
-      "members.faculty": facultyId,
+      $or: [
+        { "members.faculty": facultyId },
+        { facultyEmployeeIds: empId }
+      ],
       isActive: true,
     }).select("_id");
 
     const panelIds = panels.map((p) => p._id);
 
+
     const panelProjects = await Project.find({
       ...baseQuery,
-      panel: { $in: panelIds },
+      $or: [
+        { panel: { $in: panelIds } },
+        { "reviewPanels.panel": { $in: panelIds } }
+      ]
     })
       .populate("students", "name regNo emailId")
       .populate("guideFaculty", "name employeeId emailId")
       .populate({
         path: "panel",
+        populate: {
+          path: "members.faculty",
+          select: "name employeeId",
+        },
+      })
+      .populate({
+        path: "reviewPanels.panel",
         populate: {
           path: "members.faculty",
           select: "name employeeId",
@@ -213,15 +233,28 @@ export class ProjectService {
 
     const guideStudentIds = guideProjects.flatMap((p) => p.students);
 
+    let empId = facultyId;
+    if (mongoose.Types.ObjectId.isValid(facultyId)) {
+      const faculty = await Faculty.findById(facultyId).select("employeeId");
+      if (faculty?.employeeId) empId = faculty.employeeId;
+    }
+
     const panels = await Panel.find({
-      "members.faculty": facultyId,
+      $or: [
+        { "members.faculty": facultyId },
+        { facultyEmployeeIds: empId }
+      ],
       isActive: true,
     }).select("_id");
 
     const panelIds = panels.map((p) => p._id);
 
+
     const panelProjects = await Project.find({
-      panel: { $in: panelIds },
+      $or: [
+        { panel: { $in: panelIds } },
+        { "reviewPanels.panel": { $in: panelIds } }
+      ],
       status: "active",
     }).select("students");
 

@@ -5,11 +5,15 @@ import ActiveReviewsSection from '../components/ActiveReviewsSection';
 import DeadlinePassedSection from '../components/DeadlinePassedSection';
 import PastReviewsSection from '../components/PastReviewsSection';
 import MarkEntryModal from '../components/MarkEntryModal';
+import FacultyAcademicContextSelector from '../components/FacultyAcademicContextSelector';
 import Button from '../../../shared/components/Button';
-import { FunnelIcon, CalendarIcon, AcademicCapIcon, ArrowRightIcon } from '@heroicons/react/24/outline';
+import { FunnelIcon, CalendarIcon, AcademicCapIcon, ArrowRightIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { MOCK_MASTER_DATA } from '../../../shared/utils/mockData';
+import { useAuth } from '../../../shared/hooks/useAuth';
 
 const FacultyDashboard = () => {
+    const { user: authUser } = useAuth();
+
     // Filter State
     const [filters, setFilters] = useState({ year: '', school: '', program: '', role: 'guide' });
     const [filterOptions, setFilterOptions] = useState({
@@ -23,10 +27,11 @@ const FacultyDashboard = () => {
         active,
         deadlinePassed,
         past,
+        panelAssignments,
         loading,
         error,
         refreshReviews
-    } = useFacultyReviews('FAC_001', filters);
+    } = useFacultyReviews(authUser?._id || authUser?.employeeId || 'FAC_001', filters);
     const [loadingFilters, setLoadingFilters] = useState(true);
 
     // Initial Data Fetch
@@ -196,77 +201,6 @@ const FacultyDashboard = () => {
 
     // --- DASHBOARD VIEW (Normal) ---
 
-    // Define Filter Content (Body Mode)
-    const FilterBar = (
-        <div className="flex flex-wrap items-center gap-4 bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-6 animate-slideUp">
-            <div className="flex items-center gap-2 text-slate-500 font-bold uppercase tracking-wide text-xs">
-                <FunnelIcon className="w-4 h-4" /> Filters
-            </div>
-
-            <div className="h-8 w-px bg-slate-200 mx-2 hidden md:block"></div>
-
-            {/* Year Filter */}
-            <div className="flex flex-col gap-1 min-w-[140px]">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Academic Year</label>
-                <select
-                    value={filters.year}
-                    onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-                >
-                    {filterOptions.years.map(year => (
-                        <option key={year} value={year}>{year}</option>
-                    ))}
-                </select>
-            </div>
-
-            {/* School Filter */}
-            <div className="flex flex-col gap-1 min-w-[140px]">
-                <label className="text-[10px] uppercase font-bold text-slate-400">School</label>
-                <select
-                    value={filters.school}
-                    onChange={e => setFilters(f => ({ ...f, school: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-sm font-semibold text-slate-700 outline-none focus:border-blue-500 transition-colors"
-                >
-                    {filterOptions.schools.map(school => (
-                        <option key={school} value={school}>{school}</option>
-                    ))}
-                </select>
-            </div>
-
-            {/* Program Filter */}
-            <div className="flex flex-col gap-1 min-w-[180px]">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Program</label>
-                <select
-                    value={filters.program}
-                    onChange={e => setFilters(f => ({ ...f, program: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg py-1.5 px-2 text-sm font-bold text-blue-600 outline-none focus:border-blue-500 transition-colors"
-                >
-                    <option>All Programs</option>
-                    {filterOptions.programs.map(program => (
-                        <option key={program.code} value={program.code}>{program.name}</option>
-                    ))}
-                </select>
-            </div>
-
-            <div className="flex-1"></div>
-
-            {/* Role Filter */}
-            <div className="flex flex-col gap-1 min-w-[120px]">
-                <label className="text-[10px] uppercase font-bold text-slate-400">Your Role</label>
-                <div className="relative">
-                    <select
-                        value={filters.role}
-                        onChange={e => setFilters(f => ({ ...f, role: e.target.value }))}
-                        className="w-full bg-slate-800 text-white border border-slate-800 rounded-lg py-1.5 px-2 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-slate-500 transition-colors appearance-none"
-                    >
-                        <option value="guide">Guide</option>
-                        <option value="panel">Panel</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-    );
-
     if (loading) return <div className="flex h-screen items-center justify-center p-8 text-slate-500">Loading Dashboard...</div>;
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
 
@@ -282,8 +216,35 @@ const FacultyDashboard = () => {
             <div className="flex-1 overflow-y-auto px-6 py-8 space-y-8 pb-32">
 
                 <div className="container mx-auto max-w-7xl">
-                    {/* FILTERS (In Body) */}
-                    {FilterBar}
+                    <div className="flex flex-col md:flex-row gap-6 mb-8 items-stretch">
+                        <FacultyAcademicContextSelector
+                            className="flex-1"
+                            currentFilters={filters}
+                            onFilterChange={(newFilters) => setFilters(newFilters)}
+                        />
+
+                        {/* Role Selector Card */}
+                        <div className="w-full md:w-64 bg-white rounded-2xl border border-slate-200 p-5 shadow-sm flex flex-col justify-between">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Viewing Mode</label>
+                            <div className="flex bg-slate-100 p-1.5 rounded-xl gap-1">
+                                <button
+                                    onClick={() => setFilters(f => ({ ...f, role: 'guide' }))}
+                                    className={`flex-1 py-2 text-xs font-black uppercase tracking-tight rounded-lg transition-all ${filters.role === 'guide' ? 'bg-white text-blue-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Guide
+                                </button>
+                                <button
+                                    onClick={() => setFilters(f => ({ ...f, role: 'panel' }))}
+                                    className={`flex-1 py-2 text-xs font-black uppercase tracking-tight rounded-lg transition-all ${filters.role === 'panel' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                                >
+                                    Panel
+                                </button>
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-3 leading-tight italic">
+                                {filters.role === 'guide' ? 'Evaluating as Project Supervisor.' : 'Evaluating as Review Panel Member.'}
+                            </p>
+                        </div>
+                    </div>
 
                     {/* Active Reviews (Always Open) */}
                     <section className="animate-slideUp">
@@ -292,6 +253,64 @@ const FacultyDashboard = () => {
                             onEnterMarks={(review, team) => handleEnterMarks(review, team)}
                         />
                     </section>
+
+                    {/* NEW: Panel Assignments Section (Direct list of projects)
+                    {filters.role === 'panel' && (
+                        <section className="animate-slideUp mt-10">
+                            <div className="flex items-center justify-between mb-6">
+                                <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                                    <div className="bg-emerald-100 p-1.5 rounded-lg">
+                                        <UserGroupIcon className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    My Panel Assignments
+                                </h2>
+                                <span className="px-3 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase tracking-wider rounded-full border border-emerald-100">
+                                    {panelAssignments?.length || 0} teams
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {panelAssignments?.map((project) => (
+                                    <div key={project._id} className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:shadow-md hover:border-emerald-200 transition-all group">
+                                        <div className="flex justify-between items-start mb-4">
+                                            <div className="bg-slate-50 p-2 rounded-xl group-hover:bg-emerald-50 transition-colors">
+                                                <UserGroupIcon className="w-5 h-5 text-slate-400 group-hover:text-emerald-500" />
+                                            </div>
+                                            <span className="text-[10px] font-black uppercase tracking-tighter text-slate-300"># PANEL</span>
+                                        </div>
+
+                                        <h3 className="text-base font-bold text-slate-800 mb-1 truncate">{project.name}</h3>
+                                        <p className="text-xs text-slate-500 line-clamp-2 mb-4 h-8">{project.description || 'No description available for this project.'}</p>
+
+                                        <div className="grid grid-cols-2 gap-2 mb-5">
+                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-50">
+                                                <p className="text-[9px] uppercase font-bold text-slate-400 mb-0.5">Students</p>
+                                                <p className="text-xs font-bold text-slate-700">{project.students?.length || 0} Members</p>
+                                            </div>
+                                            <div className="bg-slate-50 p-2 rounded-lg border border-slate-50">
+                                                <p className="text-[9px] uppercase font-bold text-slate-400 mb-0.5">Batch</p>
+                                                <p className="text-xs font-bold text-slate-700">{project.academicYear}</p>
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            onClick={() => handleEnterMarks({ id: 'GENERAL', displayName: 'Panel Review', reviews: [] }, project)}
+                                            className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-sm shadow-emerald-100 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            Enter Marks
+                                        </button>
+                                    </div>
+                                ))}
+
+                                {panelAssignments?.length === 0 && (
+                                    <div className="col-span-full py-12 bg-white rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center">
+                                        <UserGroupIcon className="w-12 h-12 text-slate-100 mb-3" />
+                                        <p className="text-slate-400 text-sm font-medium italic">No panel assignments found for this academic session.</p>
+                                    </div>
+                                )}
+                            </div>
+                        </section>
+                    )} */}
 
                     {/* Collapsible Sections */}
                     <section className="space-y-6 mt-8 animate-slideUp delay-100">

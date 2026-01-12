@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import Modal from '../../../shared/components/Modal';
 import Button from '../../../shared/components/Button';
 import RequestEditModal from './RequestEditModal';
-import { CheckCircleIcon, UserGroupIcon, LockClosedIcon, LockOpenIcon, ClockIcon } from '@heroicons/react/24/outline';
+import { MapPinIcon, CheckCircleIcon, UserGroupIcon, LockClosedIcon, LockOpenIcon, ClockIcon } from '@heroicons/react/24/outline';
 import { isDeadlinePassed } from '../../../shared/utils/dateHelpers';
 import Toast from '../../../shared/components/Toast';
 
@@ -21,7 +21,6 @@ const TeamsModal = ({ isOpen, onClose, review, onEnterMarks }) => {
     setToast({ type: 'success', message: `Request sent for ${requestTeam.name}` });
 
     // Optimistically update local state for demo purposes (if parent doesn't update)
-    // In real app, re-fetch or context update happens
     requestTeam.requestStatus = 'pending';
 
     setRequestTeam(null);
@@ -83,8 +82,16 @@ const TeamsModal = ({ isOpen, onClose, review, onEnterMarks }) => {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap">
                         <div className={`font-semibold ${isLocked && !isPending ? 'text-slate-500' : 'text-gray-900'}`}>{team.name}</div>
+                        {(team.roleLabel || team.role) && (
+                          <span className={`px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide rounded border ${team.role === 'guide'
+                            ? 'bg-purple-100 text-purple-700 border-purple-200'
+                            : 'bg-emerald-100 text-emerald-700 border-emerald-200'
+                            }`}>
+                            {team.roleLabel || team.role}
+                          </span>
+                        )}
                         {team.isUnlocked && isExpired && (
                           <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wide rounded border border-green-200 flex items-center gap-1">
                             <LockOpenIcon className="w-3 h-3" /> Unlocked
@@ -94,9 +101,34 @@ const TeamsModal = ({ isOpen, onClose, review, onEnterMarks }) => {
                       {team.projectTitle && (
                         <div className="text-sm text-gray-500 truncate">{team.projectTitle}</div>
                       )}
-                      <div className="text-xs text-gray-400 mt-1">
-                        {team.students?.length} member{team.students?.length !== 1 ? 's' : ''}
+
+                      <div className="flex items-center gap-3 mt-1 flex-wrap">
+                        <div className="text-[11px] text-blue-600 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 font-medium">
+                          Panel: {team.panelName}
+                        </div>
+                        {team.venue && (
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1">
+                            <MapPinIcon className="w-3 h-3" /> {team.venue}
+                          </div>
+                        )}
+                        <div className="text-[11px] text-gray-400">
+                          {team.students?.length} member{team.students?.length !== 1 ? 's' : ''}
+                        </div>
                       </div>
+
+                      {/* Display marks if entered */}
+                      {team.marksEntered && team.students && (
+                        <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1">
+                          {team.students.map(s => (
+                            <div key={s.student_id} className="text-[10px] flex items-center gap-1.5 font-bold">
+                              <span className="text-slate-400">{s.student_name}:</span>
+                              <span className="text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100">
+                                {s.totalMarks} / {s.maxTotalMarks}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
 
