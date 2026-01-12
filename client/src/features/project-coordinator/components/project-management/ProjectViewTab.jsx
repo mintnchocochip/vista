@@ -2,110 +2,104 @@
 import React, { useState } from "react";
 import Card from "../../../../shared/components/Card";
 import Badge from "../../../../shared/components/Badge";
-import Button from "../../../../shared/components/Button";
+import EmptyState from "../../../../shared/components/EmptyState";
 import ProjectDetailsModal from "./ProjectDetailsModal";
 import {
   AcademicCapIcon,
   UserGroupIcon,
-  DocumentTextIcon,
+  UsersIcon,
 } from "@heroicons/react/24/outline";
+import { formatPanelName } from "../../utils/panelUtils";
 
 const ProjectViewTab = ({ projects = [], isPrimary = false }) => {
   const [selectedProject, setSelectedProject] = useState(null);
-  const [showModal, setShowModal] = useState(false);
-
-  const handleViewDetails = (project) => {
-    setSelectedProject(project);
-    setShowModal(true);
-  };
 
   if (projects.length === 0) {
     return (
-      <Card>
-        <div className="p-12 text-center text-gray-500">
-          <DocumentTextIcon className="h-16 w-16 mx-auto mb-4 text-gray-400" />
-          <p className="text-lg font-medium">No projects found</p>
-          <p className="text-sm mt-2">Try adjusting your filters</p>
-        </div>
-      </Card>
+      <EmptyState
+        title="No projects found"
+        description="No projects match your current academic context. Upload projects or adjust filters."
+        icon={AcademicCapIcon}
+      />
     );
   }
 
   return (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {projects.map((project) => (
-          <Card key={project.id} className="hover:shadow-lg transition-shadow">
-            <div className="space-y-4">
-              {/* Project Header */}
-              <div>
-                <div className="flex items-start justify-between gap-2 mb-2">
-                  <h3 className="font-semibold text-gray-900 text-lg line-clamp-2">
-                    {project.title}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {projects.map((project) => {
+          const teamSize = project.teamMembers?.length || 0;
+          const guideName = project.guide?.name || "Not Assigned";
+          const panelName = project.panel ? formatPanelName(project.panel) : null;
+          const reviewPanelsCount = project.reviewPanels?.length || 0;
+
+          return (
+            <Card
+              key={project._id || project.id}
+              className="cursor-pointer hover:shadow-lg transition-all border-l-4 border-l-blue-500"
+              onClick={() => setSelectedProject(project)}
+            >
+              <div className="space-y-3">
+                <div>
+                  <h3 className="font-semibold text-gray-900 mb-1 line-clamp-2">
+                    {project.name || project.title}
                   </h3>
+                  <p className="text-xs text-gray-500">
+                    {project.type || "Capstone Project"}
+                  </p>
                 </div>
-                <p className="text-xs text-blue-600 font-medium mb-2">
-                  {project.id}
-                </p>
-                <p className="text-sm text-gray-600 line-clamp-2">
-                  {project.description}
-                </p>
-              </div>
 
-              {/* Guide Info */}
-              <div className="pt-3 border-t border-gray-200">
-                <div className="flex items-center gap-2 mb-3">
-                  <AcademicCapIcon className="h-4 w-4 text-blue-600" />
-                  <span className="text-xs text-gray-500">Guide</span>
+                <div className="flex items-center gap-2 text-sm">
+                  <UserGroupIcon className="w-4 h-4 text-gray-400" />
+                  <span className="text-gray-600">
+                    {teamSize} {teamSize === 1 ? "member" : "members"}
+                  </span>
                 </div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {project.guide?.name || "Not Assigned"}
-                </p>
-                <p className="text-xs text-gray-600">
-                  {project.guide?.employeeId ||
-                    project.guide?.employeeID ||
-                    "-"}
-                </p>
-              </div>
 
-              {/* Team Info */}
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <UserGroupIcon className="h-4 w-4 text-green-600" />
-                  <span className="text-xs text-gray-500">Team Members</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <Badge variant="secondary">
-                    {project.teamMembers?.length || 0} members
-                  </Badge>
-                </div>
-              </div>
+                {guideName !== "Not Assigned" && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <AcademicCapIcon className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600 truncate">
+                      {guideName}
+                    </span>
+                  </div>
+                )}
 
-              {/* Action Button */}
-              <div className="pt-2 border-t border-gray-200">
-                <Button
-                  variant="primary"
-                  size="sm"
-                  className="w-full"
-                  onClick={() => handleViewDetails(project)}
-                >
-                  View Details & Marks
-                </Button>
+                {panelName && (
+                  <div className="flex items-center gap-2 text-sm">
+                    <UsersIcon className="w-4 h-4 text-gray-400" />
+                    <span className="text-gray-600 truncate">
+                      {panelName}
+                    </span>
+                  </div>
+                )}
+
+                {reviewPanelsCount > 0 && (
+                  <div className="flex items-center gap-2">
+                    <Badge variant="secondary" className="text-xs">
+                      +{reviewPanelsCount} Review Panel{reviewPanelsCount > 1 ? 's' : ''}
+                    </Badge>
+                  </div>
+                )}
+
+                {project.specialization && (
+                  <div className="text-xs text-gray-500 bg-gray-100 px-2 py-1 rounded">
+                    {project.specialization}
+                  </div>
+                )}
               </div>
-            </div>
-          </Card>
-        ))}
+            </Card>
+          );
+        })}
       </div>
 
-      {/* Project Details Modal */}
-      <ProjectDetailsModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setSelectedProject(null);
-        }}
-        project={selectedProject}
-      />
+      {selectedProject && (
+        <ProjectDetailsModal
+          isOpen={!!selectedProject}
+          onClose={() => setSelectedProject(null)}
+          project={selectedProject}
+        />
+      )}
     </>
   );
 };
