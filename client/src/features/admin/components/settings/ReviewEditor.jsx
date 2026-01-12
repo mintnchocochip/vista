@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import Card from "../../../../shared/components/Card";
 import Button from "../../../../shared/components/Button";
 import Input from "../../../../shared/components/Input";
 import Select from "../../../../shared/components/Select";
+import DateTimePicker from "../../../../shared/components/DateTimePicker";
 import {
   PlusIcon,
   TrashIcon,
@@ -13,13 +14,14 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
   const [formData, setFormData] = useState(() => {
     if (review) {
       // Normalize existing components to ensure description is an array
-      const normalizedComponents = (review.components || []).map(comp => ({
+      const normalizedComponents = (review.components || []).map((comp) => ({
         ...comp,
         description: Array.isArray(comp.description)
           ? comp.description
-          : (typeof comp.description === 'string' && comp.description.trim() !== '')
-            ? [{ label: comp.description, marks: '' }]
-            : []
+          : typeof comp.description === "string" &&
+            comp.description.trim() !== ""
+          ? [{ label: comp.description, marks: "" }]
+          : [],
       }));
       return { ...review, components: normalizedComponents };
     }
@@ -71,8 +73,13 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
         updatedComponents[index].maxMarks = selected.suggestedWeight || 0;
 
         // Initialize description as an array of criteria if it's a string from library
-        if (typeof selected.description === 'string' && selected.description.trim() !== '') {
-          updatedComponents[index].description = [{ label: selected.description, marks: '' }];
+        if (
+          typeof selected.description === "string" &&
+          selected.description.trim() !== ""
+        ) {
+          updatedComponents[index].description = [
+            { label: selected.description, marks: "" },
+          ];
         } else if (Array.isArray(selected.description)) {
           updatedComponents[index].description = selected.description;
         } else {
@@ -80,12 +87,16 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
         }
 
         // Populate sub-components from the library component if they exist
-        if (selected.predefinedSubComponents && selected.predefinedSubComponents.length > 0) {
-          updatedComponents[index].subComponents = selected.predefinedSubComponents.map(sub => ({
-            name: sub.name,
-            weight: sub.weight,
-            description: sub.description
-          }));
+        if (
+          selected.predefinedSubComponents &&
+          selected.predefinedSubComponents.length > 0
+        ) {
+          updatedComponents[index].subComponents =
+            selected.predefinedSubComponents.map((sub) => ({
+              name: sub.name,
+              weight: sub.weight,
+              description: sub.description,
+            }));
         } else {
           updatedComponents[index].subComponents = [];
         }
@@ -131,18 +142,23 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
     if (!Array.isArray(updatedComponents[compIndex].description)) {
       updatedComponents[compIndex].description = [];
     }
-    updatedComponents[compIndex].description.push({ label: '', marks: '' });
+    updatedComponents[compIndex].description.push({ label: "", marks: "" });
     setFormData({ ...formData, components: updatedComponents });
   };
 
-  const handleUpdateDescriptionCriteria = (compIndex, critIndex, field, value) => {
+  const handleUpdateDescriptionCriteria = (
+    compIndex,
+    critIndex,
+    field,
+    value
+  ) => {
     const updatedComponents = [...formData.components];
     if (!Array.isArray(updatedComponents[compIndex].description)) {
       updatedComponents[compIndex].description = []; // Safety check
     }
     updatedComponents[compIndex].description[critIndex] = {
       ...updatedComponents[compIndex].description[critIndex],
-      [field]: value
+      [field]: value,
     };
     setFormData({ ...formData, components: updatedComponents });
   };
@@ -150,7 +166,9 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
   const handleRemoveDescriptionCriteria = (compIndex, critIndex) => {
     const updatedComponents = [...formData.components];
     if (Array.isArray(updatedComponents[compIndex].description)) {
-      updatedComponents[compIndex].description = updatedComponents[compIndex].description.filter((_, i) => i !== critIndex);
+      updatedComponents[compIndex].description = updatedComponents[
+        compIndex
+      ].description.filter((_, i) => i !== critIndex);
       setFormData({ ...formData, components: updatedComponents });
     }
   };
@@ -170,9 +188,15 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
     // Validate component marks
     for (const comp of formData.components) {
       if (comp.subComponents && comp.subComponents.length > 0) {
-        const subTotal = comp.subComponents.reduce((sum, sub) => sum + (parseFloat(sub.weight) || 0), 0);
-        if (Math.abs(subTotal - comp.maxMarks) > 0.01) { // Floating point tolerance
-          setDateError(`Total marks for "${comp.name}" (${comp.maxMarks}) do not match sum of sub-components (${subTotal})`);
+        const subTotal = comp.subComponents.reduce(
+          (sum, sub) => sum + (parseFloat(sub.weight) || 0),
+          0
+        );
+        if (Math.abs(subTotal - comp.maxMarks) > 0.01) {
+          // Floating point tolerance
+          setDateError(
+            `Total marks for "${comp.name}" (${comp.maxMarks}) do not match sum of sub-components (${subTotal})`
+          );
           return;
         }
       }
@@ -182,49 +206,11 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
     onSave(formData);
   };
 
-  // Helper to split ISO string to date and time
-  const getDateTime = (isoString) => {
-    if (!isoString) return { date: '', time: '' };
-    const date = new Date(isoString);
-    const pad = (num) => String(num).padStart(2, '0');
-    return {
-      date: `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`,
-      time: `${pad(date.getHours())}:${pad(date.getMinutes())}`
-    };
-  };
-
-  const handleDateChange = (type, field, value) => {
-    const current = formData.deadline[type];
-    const { date, time } = getDateTime(current);
-
-    let newDate = date;
-    let newTime = time;
-
-    if (field === 'date') newDate = value;
-    if (field === 'time') newTime = value;
-
-    if (!newDate) {
-      // If date is cleared, clear the whole entry
-      setFormData({
-        ...formData,
-        deadline: { ...formData.deadline, [type]: '' }
-      });
-      return;
-    }
-
-    // If we have a date but no time, default to 00:00 or current time? 00:00 is safer for start, maybe 23:59 for end?
-    // Let's stick to 00:00 for simplicity or keep it empty if user hasn't touched it?
-    // The issue is if time is empty, we can't make a Date object.
-    // So if time is missing, default it.
-    if (!newTime) newTime = '00:00';
-
-    const dateObj = new Date(`${newDate}T${newTime}`);
-    if (!isNaN(dateObj.getTime())) {
-      setFormData({
-        ...formData,
-        deadline: { ...formData.deadline, [type]: dateObj.toISOString() }
-      });
-    }
+  const handleDeadlineChange = (type, value) => {
+    setFormData({
+      ...formData,
+      deadline: { ...formData.deadline, [type]: value },
+    });
   };
 
   const totalMarks = formData.components.reduce(
@@ -301,56 +287,32 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
                 }
                 className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
               />
-              <span className="ml-2 text-sm text-gray-700">Report Draft Required</span>
+              <span className="ml-2 text-sm text-gray-700">
+                Report Draft Required
+              </span>
             </div>
           </div>
 
           {/* Dates */}
-          <div className="grid grid-cols-2 gap-6 p-4 bg-gray-50 rounded-lg">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Start Date
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={getDateTime(formData.deadline.from).date}
-                  onChange={(e) => handleDateChange('from', 'date', e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg p-2"
-                  required
-                />
-                <input
-                  type="time"
-                  value={getDateTime(formData.deadline.from).time}
-                  onChange={(e) => handleDateChange('from', 'time', e.target.value)}
-                  className="w-32 border border-gray-300 rounded-lg p-2"
-                  required
-                />
-              </div>
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                End Date
-              </label>
-              <div className="flex gap-2">
-                <input
-                  type="date"
-                  value={getDateTime(formData.deadline.to).date}
-                  onChange={(e) => handleDateChange('to', 'date', e.target.value)}
-                  className="flex-1 border border-gray-300 rounded-lg p-2"
-                  required
-                />
-                <input
-                  type="time"
-                  value={getDateTime(formData.deadline.to).time}
-                  onChange={(e) => handleDateChange('to', 'time', e.target.value)}
-                  className="w-32 border border-gray-300 rounded-lg p-2"
-                  required
-                />
-              </div>
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <DateTimePicker
+                label="Deadline Start"
+                value={formData.deadline.from}
+                onChange={(value) => handleDeadlineChange("from", value)}
+                placeholder="Select start date and time"
+                required
+              />
+              <DateTimePicker
+                label="Deadline End"
+                value={formData.deadline.to}
+                onChange={(value) => handleDeadlineChange("to", value)}
+                placeholder="Select end date and time"
+                required
+              />
             </div>
             {dateError && (
-              <p className="col-span-2 text-sm text-red-600">{dateError}</p>
+              <p className="mt-3 text-sm text-red-600">{dateError}</p>
             )}
           </div>
 
@@ -439,33 +401,53 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
                     </div>
 
                     <div className="space-y-2">
-                      {Array.isArray(comp.description) && comp.description.map((crit, cIdx) => (
-                        <div key={cIdx} className="flex gap-2 items-center">
-                          <input
-                            type="text"
-                            placeholder="Label (e.g. Implemented 5 papers)"
-                            value={crit.label || ''}
-                            onChange={(e) => handleUpdateDescriptionCriteria(idx, cIdx, 'label', e.target.value)}
-                            className="flex-1 text-sm border-gray-300 rounded px-2 py-1"
-                          />
-                          <input
-                            type="text"
-                            placeholder="Marks"
-                            value={crit.marks || ''}
-                            onChange={(e) => handleUpdateDescriptionCriteria(idx, cIdx, 'marks', e.target.value)}
-                            className="w-20 text-sm border-gray-300 rounded px-2 py-1"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveDescriptionCriteria(idx, cIdx)}
-                            className="text-gray-400 hover:text-red-500"
-                          >
-                            <TrashIcon className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                      {(!Array.isArray(comp.description) || comp.description.length === 0) && (
-                        <p className="text-xs text-gray-400 italic">No description criteria added.</p>
+                      {Array.isArray(comp.description) &&
+                        comp.description.map((crit, cIdx) => (
+                          <div key={cIdx} className="flex gap-2 items-center">
+                            <input
+                              type="text"
+                              placeholder="Label (e.g. Implemented 5 papers)"
+                              value={crit.label || ""}
+                              onChange={(e) =>
+                                handleUpdateDescriptionCriteria(
+                                  idx,
+                                  cIdx,
+                                  "label",
+                                  e.target.value
+                                )
+                              }
+                              className="flex-1 text-sm border-gray-300 rounded px-2 py-1"
+                            />
+                            <input
+                              type="text"
+                              placeholder="Marks"
+                              value={crit.marks || ""}
+                              onChange={(e) =>
+                                handleUpdateDescriptionCriteria(
+                                  idx,
+                                  cIdx,
+                                  "marks",
+                                  e.target.value
+                                )
+                              }
+                              className="w-20 text-sm border-gray-300 rounded px-2 py-1"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleRemoveDescriptionCriteria(idx, cIdx)
+                              }
+                              className="text-gray-400 hover:text-red-500"
+                            >
+                              <TrashIcon className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ))}
+                      {(!Array.isArray(comp.description) ||
+                        comp.description.length === 0) && (
+                        <p className="text-xs text-gray-400 italic">
+                          No description criteria added.
+                        </p>
                       )}
                     </div>
                   </div>
@@ -527,10 +509,10 @@ const ReviewEditor = ({ review, onSave, onCancel, availableComponents }) => {
                       ))}
                       {(!comp.subComponents ||
                         comp.subComponents.length === 0) && (
-                          <p className="text-xs text-gray-400 italic">
-                            No sub-components defined.
-                          </p>
-                        )}
+                        <p className="text-xs text-gray-400 italic">
+                          No sub-components defined.
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

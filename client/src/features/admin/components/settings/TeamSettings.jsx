@@ -129,8 +129,6 @@ const TeamSettings = ({
       return;
     }
 
-
-
     if (!selectedSchool || !selectedProgram || !selectedYear) {
       showToast("Please select all filters before saving", "error");
       return;
@@ -264,298 +262,314 @@ const TeamSettings = ({
             </div>
           </div>
 
-          {/* Team Size Configuration */}
-          <div
-            className={`bg-gray-50 p-6 rounded-lg transition-opacity ${isLoading ? "opacity-50 pointer-events-none" : ""
+          {/* Show message if context not selected */}
+          {!isContextSelected && (
+            <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 text-center">
+              <p className="text-yellow-800 font-medium">
+                Please select School, Program, and Academic Year to configure
+                team settings
+              </p>
+            </div>
+          )}
+
+          {/* Team Size Configuration - Only show when context is selected */}
+          {isContextSelected && (
+            <div
+              className={`bg-gray-50 p-6 rounded-lg transition-opacity ${
+                isLoading ? "opacity-50 pointer-events-none" : ""
               }`}
-          >
-            {isLoading && (
-              <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
-                <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              </div>
-            )}
-
-            <h4 className="font-semibold text-gray-900 mb-4 text-lg">
-              Team Size Settings
-            </h4>
-
-            {/* Min and Max Students Side by Side */}
-            <div className="mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Minimum Students Per Team
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={settings.minStudentsPerTeam}
-                    disabled={!isContextSelected || isLoading}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        minStudentsPerTeam: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Maximum Students Per Team
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={settings.maxStudentsPerTeam}
-                    disabled={!isContextSelected || isLoading}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        maxStudentsPerTeam: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 mt-3">
-                Set the minimum and maximum number of students allowed in a team. Set minimum to 1 to allow individual projects.
-              </p>
-            </div>
-
-
-
-            <hr className="my-8 border-gray-200" />
-
-            <h4 className="font-semibold text-gray-900 mb-4 text-lg">
-              Panel Size Settings
-            </h4>
-
-            {/* Min and Max Panel Size Side by Side */}
-            <div className="mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Minimum Faculty Per Panel
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={settings.minPanelSize}
-                    disabled={!isContextSelected || isLoading}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        minPanelSize: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Maximum Faculty Per Panel
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={10}
-                    value={settings.maxPanelSize}
-                    disabled={!isContextSelected || isLoading}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        maxPanelSize: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 mt-3">
-                Set the minimum and maximum number of faculty members allowed per panel.
-              </p>
-            </div>
-
-            <hr className="my-8 border-gray-200" />
-
-            <h4 className="font-semibold text-gray-900 mb-4 text-lg">
-              Project Constraints
-            </h4>
-
-            {/* Max Projects Side by Side */}
-            <div className="mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Max Projects Per Guide
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={settings.maxProjectsPerGuide}
-                    disabled={!isContextSelected || isLoading}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        maxProjectsPerGuide: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Max Projects Per Panel
-                  </label>
-                  <Input
-                    type="number"
-                    min={1}
-                    max={50}
-                    value={settings.maxProjectsPerPanel}
-                    disabled={!isContextSelected || isLoading}
-                    onChange={(e) =>
-                      setSettings({
-                        ...settings,
-                        maxProjectsPerPanel: parseInt(e.target.value) || 0,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-              <p className="text-sm text-gray-600 mt-3">
-                Set the maximum number of projects a faculty member can guide and the maximum number of projects a panel can oversee.
-              </p>
-            </div>
-
-            <hr className="my-8 border-gray-200" />
-
-            {/* Deadline Configuration */}
-            <div className="mb-6 mt-8">
-              <h4 className="font-semibold text-gray-900 mb-4 text-lg">
-                Module Locks & Deadlines
-              </h4>
-              <p className="text-sm text-gray-600 mb-4">
-                Set deadlines for broad functional areas. Once the deadline
-                passes, Project Coordinators cannot perform actions in that
-                module.
-              </p>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <DateTimePicker
-                  label="Student Management Deadline"
-                  value={settings.deadlines.student_management}
-                  onChange={(value) =>
-                    setSettings({
-                      ...settings,
-                      deadlines: {
-                        ...settings.deadlines,
-                        student_management: value,
-                      },
-                    })
-                  }
-                  placeholder="Set deadline"
-                  disabled={!isContextSelected || isLoading}
-                />
-                <DateTimePicker
-                  label="Faculty Management Deadline"
-                  value={settings.deadlines.faculty_management}
-                  onChange={(value) =>
-                    setSettings({
-                      ...settings,
-                      deadlines: {
-                        ...settings.deadlines,
-                        faculty_management: value,
-                      },
-                    })
-                  }
-                  placeholder="Set deadline"
-                  disabled={!isContextSelected || isLoading}
-                />
-                <DateTimePicker
-                  label="Project Management Deadline"
-                  value={settings.deadlines.project_management}
-                  onChange={(value) =>
-                    setSettings({
-                      ...settings,
-                      deadlines: {
-                        ...settings.deadlines,
-                        project_management: value,
-                      },
-                    })
-                  }
-                  placeholder="Set deadline"
-                  disabled={!isContextSelected || isLoading}
-                />
-                <DateTimePicker
-                  label="Panel Management Deadline"
-                  value={settings.deadlines.panel_management}
-                  onChange={(value) =>
-                    setSettings({
-                      ...settings,
-                      deadlines: {
-                        ...settings.deadlines,
-                        panel_management: value,
-                      },
-                    })
-                  }
-                  placeholder="Set deadline"
-                  disabled={!isContextSelected || isLoading}
-                />
-              </div>
-            </div>
-
-            {/* Summary */}
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200 mt-6">
-              <h4 className="font-semibold text-gray-900 mb-3 text-lg">
-                Summary
-              </h4>
-              <div className="space-y-2 text-gray-700">
-                <p className="flex items-center justify-between text-base">
-                  <span>Team Size Range:</span>
-                  <strong className="text-blue-700">
-                    {settings.minStudentsPerTeam} -{" "}
-                    {settings.maxStudentsPerTeam} students
-                  </strong>
-                </p>
-                <p className="flex items-center justify-between text-base">
-                  <span>Panel Size Range:</span>
-                  <strong className="text-blue-700">
-                    {settings.minPanelSize} - {settings.maxPanelSize} faculty
-                  </strong>
-                </p>
-                <p className="flex items-center justify-between text-base">
-                  <span>Max Projects/Guide:</span>
-                  <strong className="text-blue-700">
-                    {settings.maxProjectsPerGuide}
-                  </strong>
-                </p>
-                <p className="flex items-center justify-between text-base">
-                  <span>Max Projects/Panel:</span>
-                  <strong className="text-blue-700">
-                    {settings.maxProjectsPerPanel}
-                  </strong>
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Save Button */}
-          <div className="flex justify-end items-center pt-4 border-t border-gray-200">
-            <Button
-              variant="primary"
-              onClick={handleSave}
-              size="lg"
-              disabled={
-                !selectedSchool ||
-                !selectedProgram ||
-                !selectedYear ||
-                isLoading
-              }
             >
-              {isLoading ? "Saving..." : "Save Configuration"}
-            </Button>
-          </div>
+              {isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-white/50 z-10">
+                  <div className="w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                </div>
+              )}
+
+              <h4 className="font-semibold text-gray-900 mb-4 text-lg">
+                Team Size Settings
+              </h4>
+
+              {/* Min and Max Students Side by Side */}
+              <div className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Students Per Team
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={settings.minStudentsPerTeam}
+                      disabled={!isContextSelected || isLoading}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          minStudentsPerTeam: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Students Per Team
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={settings.maxStudentsPerTeam}
+                      disabled={!isContextSelected || isLoading}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          maxStudentsPerTeam: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-3">
+                  Set the minimum and maximum number of students allowed in a
+                  team. Set minimum to 1 to allow individual projects.
+                </p>
+              </div>
+
+              <hr className="my-8 border-gray-200" />
+
+              <h4 className="font-semibold text-gray-900 mb-4 text-lg">
+                Panel Size Settings
+              </h4>
+
+              {/* Min and Max Panel Size Side by Side */}
+              <div className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Minimum Faculty Per Panel
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={settings.minPanelSize}
+                      disabled={!isContextSelected || isLoading}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          minPanelSize: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Maximum Faculty Per Panel
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={settings.maxPanelSize}
+                      disabled={!isContextSelected || isLoading}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          maxPanelSize: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-3">
+                  Set the minimum and maximum number of faculty members allowed
+                  per panel.
+                </p>
+              </div>
+
+              <hr className="my-8 border-gray-200" />
+
+              <h4 className="font-semibold text-gray-900 mb-4 text-lg">
+                Project Constraints
+              </h4>
+
+              {/* Max Projects Side by Side */}
+              <div className="mb-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Max Projects Per Guide
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={settings.maxProjectsPerGuide}
+                      disabled={!isContextSelected || isLoading}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          maxProjectsPerGuide: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Max Projects Per Panel
+                    </label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={50}
+                      value={settings.maxProjectsPerPanel}
+                      disabled={!isContextSelected || isLoading}
+                      onChange={(e) =>
+                        setSettings({
+                          ...settings,
+                          maxProjectsPerPanel: parseInt(e.target.value) || 0,
+                        })
+                      }
+                    />
+                  </div>
+                </div>
+                <p className="text-sm text-gray-600 mt-3">
+                  Set the maximum number of projects a faculty member can guide
+                  and the maximum number of projects a panel can oversee.
+                </p>
+              </div>
+
+              <hr className="my-8 border-gray-200" />
+
+              {/* Deadline Configuration */}
+              <div className="mb-6 mt-8">
+                <h4 className="font-semibold text-gray-900 mb-4 text-lg">
+                  Module Locks & Deadlines
+                </h4>
+                <p className="text-sm text-gray-600 mb-4">
+                  Set deadlines for broad functional areas. Once the deadline
+                  passes, Project Coordinators cannot perform actions in that
+                  module.
+                </p>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <DateTimePicker
+                    label="Student Management Deadline"
+                    value={settings.deadlines.student_management}
+                    onChange={(value) =>
+                      setSettings({
+                        ...settings,
+                        deadlines: {
+                          ...settings.deadlines,
+                          student_management: value,
+                        },
+                      })
+                    }
+                    placeholder="Set deadline"
+                    disabled={!isContextSelected || isLoading}
+                  />
+                  <DateTimePicker
+                    label="Faculty Management Deadline"
+                    value={settings.deadlines.faculty_management}
+                    onChange={(value) =>
+                      setSettings({
+                        ...settings,
+                        deadlines: {
+                          ...settings.deadlines,
+                          faculty_management: value,
+                        },
+                      })
+                    }
+                    placeholder="Set deadline"
+                    disabled={!isContextSelected || isLoading}
+                  />
+                  <DateTimePicker
+                    label="Project Management Deadline"
+                    value={settings.deadlines.project_management}
+                    onChange={(value) =>
+                      setSettings({
+                        ...settings,
+                        deadlines: {
+                          ...settings.deadlines,
+                          project_management: value,
+                        },
+                      })
+                    }
+                    placeholder="Set deadline"
+                    disabled={!isContextSelected || isLoading}
+                  />
+                  <DateTimePicker
+                    label="Panel Management Deadline"
+                    value={settings.deadlines.panel_management}
+                    onChange={(value) =>
+                      setSettings({
+                        ...settings,
+                        deadlines: {
+                          ...settings.deadlines,
+                          panel_management: value,
+                        },
+                      })
+                    }
+                    placeholder="Set deadline"
+                    disabled={!isContextSelected || isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 p-6 rounded-lg border border-blue-200 mt-6">
+                <h4 className="font-semibold text-gray-900 mb-3 text-lg">
+                  Summary
+                </h4>
+                <div className="space-y-2 text-gray-700">
+                  <p className="flex items-center justify-between text-base">
+                    <span>Team Size Range:</span>
+                    <strong className="text-blue-700">
+                      {settings.minStudentsPerTeam} -{" "}
+                      {settings.maxStudentsPerTeam} students
+                    </strong>
+                  </p>
+                  <p className="flex items-center justify-between text-base">
+                    <span>Panel Size Range:</span>
+                    <strong className="text-blue-700">
+                      {settings.minPanelSize} - {settings.maxPanelSize} faculty
+                    </strong>
+                  </p>
+                  <p className="flex items-center justify-between text-base">
+                    <span>Max Projects/Guide:</span>
+                    <strong className="text-blue-700">
+                      {settings.maxProjectsPerGuide}
+                    </strong>
+                  </p>
+                  <p className="flex items-center justify-between text-base">
+                    <span>Max Projects/Panel:</span>
+                    <strong className="text-blue-700">
+                      {settings.maxProjectsPerPanel}
+                    </strong>
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Save Button - Only show when context is selected */}
+          {isContextSelected && (
+            <div className="flex justify-end items-center pt-4 border-t border-gray-200">
+              <Button
+                variant="primary"
+                onClick={handleSave}
+                size="lg"
+                disabled={
+                  !selectedSchool ||
+                  !selectedProgram ||
+                  !selectedYear ||
+                  isLoading
+                }
+              >
+                {isLoading ? "Saving..." : "Save Configuration"}
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </Card>
