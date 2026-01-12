@@ -118,9 +118,9 @@ const FacultyUploadTab = () => {
               <UserPlusIcon className="w-4 h-4 mr-1" />
               Add Faculty
             </Button>
-            <span className="text-xs text-gray-500 self-center ml-2">
+            {/* <span className="text-xs text-gray-500 self-center ml-2">
               {filters.school} → {filters.department}
-            </span>
+            </span> */}
           </div>
 
           {/* Bulk Upload Section */}

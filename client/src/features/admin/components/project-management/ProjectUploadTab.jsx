@@ -162,9 +162,9 @@ const ProjectUploadTab = () => {
               <PlusCircleIcon className="w-4 h-4 mr-1" />
               Single Entry
             </Button>
-            <span className="text-xs text-gray-500 self-center ml-2">
+            {/* <span className="text-xs text-gray-500 self-center ml-2">
               {filters.school} → {filters.department} → {filters.academicYear}
-            </span>
+            </span> */}
           </div>
 
           {/* Bulk Upload Section */}
