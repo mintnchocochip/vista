@@ -228,6 +228,8 @@ const RubricEditor = ({ component, onSave, onCancel }) => {
     );
   }
 
+  const totalWeight = formData.predefinedSubComponents.reduce((sum, s) => sum + (parseFloat(s.weight) || 0), 0);
+
   return (
     <Card>
       <div className="p-6">
@@ -269,7 +271,7 @@ const RubricEditor = ({ component, onSave, onCancel }) => {
               </label>
               <Select
                 value={formData.category}
-                onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                onChange={(value) => setFormData({ ...formData, category: value })}
                 options={categories.map(cat => ({ value: cat, label: cat }))}
               />
             </div>
@@ -354,7 +356,7 @@ const RubricEditor = ({ component, onSave, onCancel }) => {
               </label>
               <Select
                 value={formData.applicableFor[0] || 'both'}
-                onChange={(e) => setFormData({ ...formData, applicableFor: [e.target.value] })}
+                onChange={(value) => setFormData({ ...formData, applicableFor: [value] })}
                 options={[
                   { value: 'both', label: 'Both Hardware & Software' },
                   { value: 'hardware', label: 'Hardware Projects Only' },
