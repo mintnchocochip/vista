@@ -1,4 +1,5 @@
 import Faculty from "../models/facultySchema.js";
+import ProjectCoordinator from "../models/projectCoordinatorSchema.js";
 import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { logger } from "../utils/logger.js";
@@ -86,13 +87,26 @@ export async function login(req, res) {
       ip: req.ip,
     });
 
+    // If project coordinator, fetch primary status
+    let isPrimary = false;
+    if (faculty.isProjectCoordinator) {
+      const coordinatorData = await ProjectCoordinator.findOne({
+        faculty: faculty._id,
+        isActive: true
+      });
+      if (coordinatorData) {
+        isPrimary = coordinatorData.isPrimary;
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Login successful.",
       token,
       data: {
         ...facultyData,
-        isProjectCoordinator: faculty.isProjectCoordinator, // Ensure explicit inclusion
+        isProjectCoordinator: faculty.isProjectCoordinator,
+        isPrimary, // Add isPrimary flag
       },
     });
   } catch (error) {
@@ -354,10 +368,25 @@ export async function verifyToken(req, res) {
 
     delete facultyData.password;
 
+    // If project coordinator, fetch primary status
+    let isPrimary = false;
+    if (facultyData.isProjectCoordinator) {
+      const coordinatorData = await ProjectCoordinator.findOne({
+        faculty: facultyData._id,
+        isActive: true
+      });
+      if (coordinatorData) {
+        isPrimary = coordinatorData.isPrimary;
+      }
+    }
+
     res.status(200).json({
       success: true,
       message: "Token is valid.",
-      data: facultyData,
+      data: {
+        ...facultyData,
+        isPrimary,
+      },
     });
   } catch (error) {
     res.status(500).json({

@@ -87,11 +87,8 @@ const FacultyList = ({ faculty, onEdit, onDelete, isPrimary }) => {
                         </p>
                       </div>
                       <div>
-                        <p className="text-xs font-medium text-gray-500 uppercase">
-                          Designation
-                        </p>
                         <p className="text-sm font-semibold text-gray-900 mt-1">
-                          {member.role || "Faculty"}
+                          {member.isPrimary ? "Main Coordinator" : (member.role || "Faculty")}
                         </p>
                       </div>
                     </div>

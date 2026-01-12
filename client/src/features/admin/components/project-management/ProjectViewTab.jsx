@@ -5,13 +5,14 @@ import Card from "../../../../shared/components/Card";
 import EmptyState from "../../../../shared/components/EmptyState";
 import LoadingSpinner from "../../../../shared/components/LoadingSpinner";
 import ProjectDetailsModal from "./ProjectDetailsModal";
-import { UserGroupIcon, AcademicCapIcon } from "@heroicons/react/24/outline";
+import { UserGroupIcon, AcademicCapIcon, MagnifyingGlassIcon } from "@heroicons/react/24/outline";
 import { fetchProjects } from "../../services/adminApi";
 import { useToast } from "../../../../shared/hooks/useToast";
 
 const ProjectViewTab = () => {
   const [filters, setFilters] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const { showToast } = useToast();
@@ -57,10 +58,42 @@ const ProjectViewTab = () => {
     loadProjects();
   }, [filters, showToast]);
 
+  const filteredProjects = projects.filter((project) => {
+    const query = searchQuery.toLowerCase();
+    const matchName = (project.name || "").toLowerCase().includes(query);
+    const matchGuide = (project.guide?.name || "").toLowerCase().includes(query);
+    // Admin project panel object might differ, but assuming name property exists if populated.
+    // Based on previous code, panel mapping might be needed if not fully populated.
+    // Checking previous file content, it seems panel might be missing or different.
+    // The card doesn't show panel info in Admin view currently, but plan said "Panel Name".
+    // I'll include it if it exists.
+    const matchPanel = (project.panel?.panelName || project.panel?.name || "").toLowerCase().includes(query);
+    const matchMembers = (project.teamMembers || []).some(m =>
+      (m.name || "").toLowerCase().includes(query) ||
+      (m.rollNumber || "").toLowerCase().includes(query)
+    );
+
+    return matchName || matchGuide || matchPanel || matchMembers;
+  });
+
   return (
     <div className="space-y-6">
       {/* Academic Filter Selector */}
       <AcademicFilterSelector onFilterComplete={handleFilterComplete} />
+
+      {/* Search Bar */}
+      {filters && (
+        <div className="relative">
+          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <input
+            type="text"
+            placeholder="Search by project name, student, guide..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+          />
+        </div>
+      )}
 
       {/* Project Content - only show when filters are complete */}
       {filters && (
@@ -69,16 +102,14 @@ const ProjectViewTab = () => {
             <div className="flex justify-center py-12">
               <LoadingSpinner />
             </div>
-          ) : projects.length === 0 ? (
-            <EmptyState
-              title="No projects found"
-              description="No projects match your current academic context. Upload projects or adjust filters."
-              icon={AcademicCapIcon}
-            />
+          ) : filteredProjects.length === 0 ? (
+            <div className="text-center py-12 text-gray-500">
+              <p className="text-lg">No projects match your search</p>
+            </div>
           ) : (
             <>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {projects.map((project) => {
+                {filteredProjects.map((project) => {
                   const teamSize = project.teamMembers?.length || 0;
                   const guideName = project.guide?.name || "Not Assigned";
 

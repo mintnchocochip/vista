@@ -77,9 +77,13 @@ const FacultyManagement = () => {
       });
 
       if (response.success) {
-        setFaculty(response.faculty || []);
+        // Filter out admins
+        const validFaculty = (response.faculty || []).filter(
+          f => f.role?.toLowerCase() !== 'admin'
+        );
+        setFaculty(validFaculty);
         showToast(
-          `Loaded ${response.faculty?.length || 0} faculty members`,
+          `Loaded ${validFaculty.length} faculty members`,
           "success"
         );
       } else {
