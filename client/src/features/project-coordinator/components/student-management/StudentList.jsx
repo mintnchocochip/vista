@@ -1,11 +1,10 @@
 // src/features/project-coordinator/components/student-management/StudentList.jsx
-import React, { useState } from "react";
-import Card from "../../../../shared/components/Card";
-import Button from "../../../../shared/components/Button";
-import Badge from "../../../../shared/components/Badge";
-import EmptyState from "../../../../shared/components/EmptyState";
-import LoadingSpinner from "../../../../shared/components/LoadingSpinner";
-import StudentDetailsModal from "./StudentDetailsModal";
+import React, { useState } from 'react';
+import Card from '../../../../shared/components/Card';
+import Button from '../../../../shared/components/Button';
+import Badge from '../../../../shared/components/Badge';
+import EmptyState from '../../../../shared/components/EmptyState';
+import LoadingSpinner from '../../../../shared/components/LoadingSpinner';
 import {
   UserGroupIcon,
   PhoneIcon,
@@ -13,40 +12,17 @@ import {
   CheckCircleIcon,
   XCircleIcon,
   ClockIcon,
-  EyeIcon,
-} from "@heroicons/react/24/outline";
+  EyeIcon
+} from '@heroicons/react/24/outline';
 
-const StudentList = ({
-  students = [],
-  loading = false,
-  onViewDetails,
-  isPrimary = false,
-}) => {
-  const [searchTerm, setSearchTerm] = useState("");
-  const [selectedStudent, setSelectedStudent] = useState(null);
-  const [showModal, setShowModal] = useState(false);
+const StudentList = ({ students = [], loading = false, onViewDetails }) => {
+  const [searchTerm, setSearchTerm] = useState('');
 
-  const filteredStudents = students.filter(
-    (student) =>
-      student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.regNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      student.email?.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredStudents = students.filter(student =>
+    student.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.regNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    student.email?.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const handleViewDetails = (student) => {
-    setSelectedStudent(student);
-    setShowModal(true);
-  };
-
-  const handleNavigateToStudent = (student) => {
-    // Find the student in the list by regNo or id
-    const foundStudent = students.find(
-      (s) => s.regNo === student.regNo || s.id === student.id
-    );
-    if (foundStudent) {
-      setSelectedStudent(foundStudent);
-    }
-  };
 
   const getPPTStatusBadge = (student) => {
     if (!student.reviewStatuses || student.reviewStatuses.length === 0) {
@@ -58,34 +34,20 @@ const StudentList = ({
       );
     }
 
-    const approved = student.reviewStatuses.filter(
-      (r) => r.status === "approved"
-    ).length;
+    const approved = student.reviewStatuses.filter(r => r.status === 'approved').length;
     const total = student.reviewStatuses.length;
-    const pending = student.reviewStatuses.filter(
-      (r) => r.status === "pending" || r.status === "not-submitted"
-    ).length;
+    const pending = student.reviewStatuses.filter(r => r.status === 'pending' || r.status === 'not-submitted').length;
 
     const allApproved = approved === total;
     const somePending = pending > 0;
 
-    const Icon = allApproved
-      ? CheckCircleIcon
-      : somePending
-      ? ClockIcon
-      : XCircleIcon;
-    const variant = allApproved
-      ? "success"
-      : somePending
-      ? "warning"
-      : "default";
+    const Icon = allApproved ? CheckCircleIcon : somePending ? ClockIcon : XCircleIcon;
+    const variant = allApproved ? 'success' : somePending ? 'warning' : 'default';
 
     return (
       <div className="flex items-center gap-1">
         <Icon className="w-4 h-4" />
-        <Badge variant={variant}>
-          {approved}/{total} Approved
-        </Badge>
+        <Badge variant={variant}>{approved}/{total} Approved</Badge>
       </div>
     );
   };
@@ -114,8 +76,7 @@ const StudentList = ({
             className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
           />
           <span className="text-sm font-medium text-gray-600">
-            {filteredStudents.length} student
-            {filteredStudents.length !== 1 ? "s" : ""}
+            {filteredStudents.length} student{filteredStudents.length !== 1 ? 's' : ''}
           </span>
         </div>
       </Card>
@@ -126,43 +87,32 @@ const StudentList = ({
           <EmptyState
             icon={UserGroupIcon}
             title="No students found"
-            description={
-              searchTerm
-                ? "Try adjusting your search criteria"
-                : "No students registered for this academic context"
-            }
+            description={searchTerm ? "Try adjusting your search criteria" : "No students registered for this academic context"}
           />
         </Card>
       ) : (
         <div className="space-y-3">
           {filteredStudents.map((student) => (
-            <Card
-              key={student._id || student.regNo}
-              padding="md"
-              className="hover:shadow-md transition-shadow"
-            >
+            <Card key={student.id || student._id} padding="md" className="hover:shadow-md transition-shadow">
               <div className="flex items-start justify-between gap-4">
                 {/* Student Info */}
                 <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {/* Basic Info */}
                   <div>
-                    <h3 className="font-semibold text-gray-900 text-base mb-1">
-                      {student.name}
-                    </h3>
-                    <p className="text-sm text-gray-600 font-mono">
-                      {student.regNo}
-                    </p>
+                    <h3 className="font-semibold text-gray-900 text-base mb-1">{student.name}</h3>
+                    <p className="text-sm text-gray-600 font-mono">{student.regNo}</p>
                   </div>
 
                   {/* Contact */}
                   <div className="space-y-1">
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <PhoneIcon className="w-4 h-4 text-gray-400" />
-                      <span>{student.phone || "N/A"}</span>
+                      {/* Handle both phone and phoneNumber properties */}
+                      <span>{student.phone || student.phoneNumber || 'N/A'}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <EnvelopeIcon className="w-4 h-4 text-gray-400" />
-                      <span className="truncate">{student.email}</span>
+                      <span className="truncate">{student.email || student.emailId}</span>
                     </div>
                   </div>
 
@@ -175,10 +125,9 @@ const StudentList = ({
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Total Marks</p>
                       <p className="text-sm font-semibold text-gray-900">
-                        {student.totalMarks !== null &&
-                        student.totalMarks !== undefined
+                        {student.totalMarks !== null && student.totalMarks !== undefined
                           ? `${student.totalMarks}/100`
-                          : "Not Graded"}
+                          : 'Not Graded'}
                       </p>
                     </div>
                   </div>
@@ -187,15 +136,11 @@ const StudentList = ({
                   <div className="space-y-2">
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Guide</p>
-                      <p className="text-sm text-gray-700 truncate">
-                        {student.guide || "Not Assigned"}
-                      </p>
+                      <p className="text-sm text-gray-700 truncate">{student.guide?.name || student.guide || 'Not Assigned'}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500 mb-1">Panel Member</p>
-                      <p className="text-sm text-gray-700 truncate">
-                        {student.panelMember || "Not Assigned"}
-                      </p>
+                      <p className="text-sm text-gray-700 truncate">{student.panelMember?.name || student.panelMember || 'Not Assigned'}</p>
                     </div>
                   </div>
                 </div>
@@ -205,7 +150,7 @@ const StudentList = ({
                   <Button
                     variant="secondary"
                     size="sm"
-                    onClick={() => handleViewDetails(student)}
+                    onClick={() => onViewDetails(student)}
                     className="gap-2"
                   >
                     <EyeIcon className="w-4 h-4" />
@@ -221,8 +166,8 @@ const StudentList = ({
                   <div className="flex flex-wrap gap-2">
                     {student.teammates.map((teammate) => (
                       <button
-                        key={teammate.id}
-                        onClick={() => handleViewDetails({ id: teammate.id })}
+                        key={teammate.id || teammate._id}
+                        onClick={() => onViewDetails({ id: teammate.id || teammate._id })}
                         className="px-2 py-1 bg-blue-50 text-blue-700 text-xs font-medium rounded-md hover:bg-blue-100 transition-colors border border-blue-200"
                       >
                         {teammate.name}
@@ -235,18 +180,6 @@ const StudentList = ({
           ))}
         </div>
       )}
-
-      {/* Student Details Modal */}
-      <StudentDetailsModal
-        isOpen={showModal}
-        onClose={() => {
-          setShowModal(false);
-          setSelectedStudent(null);
-        }}
-        student={selectedStudent}
-        onNavigateToStudent={handleNavigateToStudent}
-        students={students}
-      />
     </div>
   );
 };

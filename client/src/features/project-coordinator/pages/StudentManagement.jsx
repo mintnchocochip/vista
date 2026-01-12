@@ -1,116 +1,47 @@
 // src/features/project-coordinator/pages/StudentManagement.jsx
 import React, { useState, useEffect } from "react";
-import { PlusCircleIcon, EyeIcon } from "@heroicons/react/24/outline";
+import { EyeIcon, ArrowUpTrayIcon } from "@heroicons/react/24/outline";
 import Navbar from "../../../shared/components/Navbar";
 import CoordinatorTabs from "../components/shared/CoordinatorTabs";
-import AcademicFilterSelector from "../components/shared/AcademicFilterSelector";
-import StudentList from "../components/student-management/StudentList";
-import StudentCreate from "../components/student-management/StudentCreate";
-import Card from "../../../shared/components/Card";
-import Button from "../../../shared/components/Button";
-import { useToast } from "../../../shared/hooks/useToast";
+import StudentViewTab from "../components/student-management/StudentViewTab";
+import StudentUploadTab from "../components/student-management/StudentUploadTab";
+import { fetchStudents } from "../services/coordinatorApi";
 import { useAuth } from "../../../shared/hooks/useAuth";
-import {
-  fetchStudents as apiFetchStudents,
-  fetchPermissions as apiFetchPermissions,
-} from "../services/coordinatorApi";
 
 const StudentManagement = () => {
-  const [filters, setFilters] = useState(null);
-  const [students, setStudents] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [isPrimary, setIsPrimary] = useState(false);
   const [activeTab, setActiveTab] = useState("view");
-  const { showToast } = useToast();
+  const [totalStudents, setTotalStudents] = useState(0);
   const { user } = useAuth();
 
-  // Load coordinator permissions
   useEffect(() => {
-    const fetchCoordinatorPermissions = async () => {
+    const loadStats = async () => {
       try {
-        setLoading(true);
-        const permResponse = await apiFetchPermissions();
-        if (permResponse.success) {
-          setIsPrimary(permResponse.data.isPrimary);
+        const response = await fetchStudents({
+          school: user?.school,
+          program: user?.program
+        });
+        if (response.success) {
+          setTotalStudents(response.students?.length || 0);
         }
       } catch (error) {
-        console.error("Error fetching coordinator permissions:", error);
-        showToast("Error loading permissions", "error");
-      } finally {
-        setLoading(false);
+        console.error("Failed to load stats", error);
       }
     };
-
-    fetchCoordinatorPermissions();
-  }, [showToast]);
-
-  // Fetch students when filters are complete
-  useEffect(() => {
-    if (filters && activeTab === "view") {
-      fetchStudents();
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters, activeTab]);
-
-  const fetchStudents = async () => {
-    try {
-      setLoading(true);
-
-      const response = await apiFetchStudents({
-        school: user?.school,
-        program: user?.program, // Send program explicitly
-        academicYear: filters?.year,
-      });
-
-      if (response.success) {
-        setStudents(response.students || []);
-        showToast(
-          `Loaded ${response.students?.length || 0} students`,
-          "success"
-        );
-      } else {
-        showToast(response.message || "Failed to load students", "error");
-      }
-    } catch (error) {
-      console.error("Error fetching students:", error);
-      showToast(
-        error.response?.data?.message || "Failed to load students",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleViewDetails = (student) => {
-    // Details view would be implemented here
-    showToast(`Viewing details for ${student.name}`, "info");
-  };
-
-  const handleFilterComplete = React.useCallback((selectedFilters) => {
-    setFilters((prev) => {
-      // Prevent update if filters haven't changed (deep comparison)
-      if (JSON.stringify(prev) === JSON.stringify(selectedFilters)) {
-        return prev;
-      }
-      return selectedFilters;
-    });
-  }, []);
+    if (user) loadStats();
+  }, [user]);
 
   const studentTabs = [
     {
       id: "view",
       label: "Student View",
       icon: EyeIcon,
-      description: "View existing students",
-      enabled: true,
+      description: "View and manage existing students",
     },
     {
-      id: "create",
-      label: "Student Create",
-      icon: PlusCircleIcon,
-      description: "Create/upload students",
-      enabled: isPrimary, // Only primary coordinators can create
+      id: "upload",
+      label: "Student Upload",
+      icon: ArrowUpTrayIcon,
+      description: "Add students via Excel or single entry",
     },
   ];
 
@@ -120,73 +51,54 @@ const StudentManagement = () => {
       <CoordinatorTabs />
 
       <div className="max-w-7xl mx-auto px-4 py-6">
-        {/* Page Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">
             Student Management
           </h1>
-          <p className="text-sm text-gray-600 mt-1">
-            {isPrimary
-              ? "You have full access to student management"
-              : "You have view-only access"}
-          </p>
         </div>
 
-        {/* Tabs */}
+        {/* Student Tabs */}
         <div className="mb-6 bg-white rounded-lg shadow-sm p-2">
-          <div className="flex gap-2 flex-wrap">
-            {studentTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              const isDisabled = !tab.enabled;
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex gap-2 w-full sm:w-auto">
+              {studentTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
 
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => !isDisabled && setActiveTab(tab.id)}
-                  disabled={isDisabled}
-                  className={`
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`
                     flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all
-                    ${isDisabled
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
-                      : isActive
+                    ${isActive
                         ? "bg-blue-600 text-white shadow-md"
                         : "bg-gray-50 text-gray-700 hover:bg-gray-100"
-                    }
+                      }
                   `}
-                  title={
-                    isDisabled
-                      ? `Only primary coordinators can ${tab.label.toLowerCase()}`
-                      : tab.description
-                  }
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+                    title={tab.description}
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="px-4 flex items-center gap-2 text-sm text-gray-600">
+              <span className="font-medium">Total Students:</span>
+              <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full font-bold text-xs">
+                {totalStudents}
+              </span>
+            </div>
           </div>
         </div>
 
         {/* Tab Content */}
-        {activeTab === "view" && (
-          <div className="space-y-6">
-            {/* Filter Selector */}
-            <AcademicFilterSelector onFilterComplete={handleFilterComplete} />
-
-            {/* Student List */}
-            {filters && (
-              <StudentList
-                students={students}
-                loading={loading}
-                onViewDetails={handleViewDetails}
-                isPrimary={isPrimary}
-              />
-            )}
-          </div>
-        )}
-
-        {activeTab === "create" && isPrimary && <StudentCreate />}
+        <div>
+          {activeTab === "view" && <StudentViewTab />}
+          {activeTab === "upload" && <StudentUploadTab />}
+        </div>
       </div>
     </div>
   );
