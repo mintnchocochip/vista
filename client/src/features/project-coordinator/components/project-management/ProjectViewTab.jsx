@@ -33,20 +33,6 @@ const ProjectViewTab = ({ projects = [], isPrimary = false }) => {
 
   return (
     <>
-      <div className="mb-6 flex items-center justify-between bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-        <div className="flex items-center gap-3">
-          <div className="bg-blue-50 p-2 rounded-lg">
-            <DocumentTextIcon className="h-5 w-5 text-blue-600" />
-          </div>
-          <div>
-            <p className="text-sm text-gray-500 font-medium uppercase tracking-wider">Total Projects</p>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {projects.length}
-            </h2>
-          </div>
-        </div>
-      </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {projects.map((project) => (
           <Card key={project.id} className="hover:shadow-lg transition-shadow">

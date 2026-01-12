@@ -20,6 +20,12 @@ const ProjectManagement = () => {
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState(null);
   const [projects, setProjects] = useState([]);
+  const [stats, setStats] = useState({
+    total: 0,
+    withGuides: 0,
+    panelAssigned: 0,
+    bestProjects: 0,
+  });
   const { showToast } = useToast();
   const { user } = useAuth();
 
@@ -90,6 +96,17 @@ const ProjectManagement = () => {
     }
   }, [filters, activeTab, fetchProjects]);
 
+  useEffect(() => {
+    if (projects) {
+      setStats({
+        total: projects.length,
+        withGuides: projects.filter((p) => p.guide).length,
+        panelAssigned: projects.filter((p) => p.panel || p.panelId).length,
+        bestProjects: projects.filter((p) => p.bestProject).length,
+      });
+    }
+  }, [projects]);
+
   const projectTabs = [
     {
       id: "view",
@@ -135,37 +152,67 @@ const ProjectManagement = () => {
 
         {/* Tab Buttons */}
         <div className="mb-6 bg-white rounded-lg shadow-sm p-2">
-          <div className="flex gap-2 flex-wrap">
-            {projectTabs.map((tab) => {
-              const Icon = tab.icon;
-              const isActive = activeTab === tab.id;
-              const isDisabled = !tab.enabled;
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
+            <div className="flex gap-2 w-full sm:w-auto flex-wrap">
+              {projectTabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                const isDisabled = !tab.enabled;
 
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => !isDisabled && setActiveTab(tab.id)}
-                  disabled={isDisabled}
-                  className={`
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => !isDisabled && setActiveTab(tab.id)}
+                    disabled={isDisabled}
+                    className={`
                     flex items-center gap-2 px-4 py-3 rounded-lg font-medium text-sm transition-all
-                    ${isDisabled
-                      ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
-                      : isActive
+                    ${
+                      isDisabled
+                        ? "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
+                        : isActive
                         ? "bg-blue-600 text-white shadow-md"
                         : "bg-gray-50 text-gray-700 hover:bg-gray-100"
                     }
                   `}
-                  title={
-                    isDisabled
-                      ? `Only primary coordinators can ${tab.label.toLowerCase()}`
-                      : tab.description
-                  }
-                >
-                  <Icon className="h-5 w-5" />
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+                    title={
+                      isDisabled
+                        ? `Only primary coordinators can ${tab.label.toLowerCase()}`
+                        : tab.description
+                    }
+                  >
+                    <Icon className="h-5 w-5" />
+                    <span>{tab.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="px-4 flex items-center gap-4 text-xs text-gray-600">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Total:</span>
+                <span className="bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.total}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 hidden md:flex">
+                <span className="font-medium">With Guides:</span>
+                <span className="bg-orange-100 text-orange-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.withGuides}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 hidden md:flex">
+                <span className="font-medium">Panel Assigned:</span>
+                <span className="bg-purple-100 text-purple-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.panelAssigned}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 hidden lg:flex">
+                <span className="font-medium">Best:</span>
+                <span className="bg-yellow-100 text-yellow-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.bestProjects}
+                </span>
+              </div>
+            </div>
           </div>
         </div>
 

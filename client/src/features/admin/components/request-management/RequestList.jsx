@@ -5,17 +5,23 @@ import {
   XCircleIcon,
   ClockIcon,
   MagnifyingGlassIcon,
-  FunnelIcon,
   ExclamationCircleIcon,
   UserIcon,
-  ShieldCheckIcon
+  ShieldCheckIcon,
+  DocumentTextIcon
 } from "@heroicons/react/24/outline";
 import { useAuth } from "../../../../shared/hooks/useAuth";
-import AccessRequestList from "./AccessRequestList"; // Import the new component
+import AccessRequestList from "./AccessRequestList";
+import Card from "../../../../shared/components/Card";
+import Button from "../../../../shared/components/Button";
+import Badge from "../../../../shared/components/Badge";
+import EmptyState from "../../../../shared/components/EmptyState";
+import LoadingSpinner from "../../../../shared/components/LoadingSpinner";
+import Modal from "../../../../shared/components/Modal";
 
 const RequestList = () => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState("faculty"); // 'faculty' or 'access'
+  const [activeTab, setActiveTab] = useState("faculty");
   const [requests, setRequests] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -27,7 +33,7 @@ const RequestList = () => {
 
   // Action Modals
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [actionType, setActionType] = useState(null); // 'approve' or 'reject'
+  const [actionType, setActionType] = useState(null);
   const [actionRemarks, setActionRemarks] = useState("");
   const [newDeadline, setNewDeadline] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -39,10 +45,8 @@ const RequestList = () => {
   }, [activeTab]);
 
   const loadRequests = async () => {
-    // ... existing loadRequests logic ...
     try {
       setLoading(true);
-      // Pass filters if needed, currently fetching all suitable for admin view
       const data = await fetchRequests();
       if (data.success) {
         setRequests(data.data || []);
@@ -55,8 +59,6 @@ const RequestList = () => {
       setLoading(false);
     }
   };
-
-  // ... existing handler functions ...
 
   const handleActionClick = (request, type) => {
     setSelectedRequest(request);
@@ -89,7 +91,6 @@ const RequestList = () => {
       );
 
       if (response.success) {
-        // Update local state
         setRequests((prev) =>
           prev.map((r) =>
             r._id === selectedRequest._id ? response.data : r
@@ -109,24 +110,22 @@ const RequestList = () => {
   const getStatusBadge = (status) => {
     switch (status) {
       case "approved":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-            Approved
-          </span>
-        );
+        return <Badge variant="success">Approved</Badge>;
       case "rejected":
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
-            Rejected
-          </span>
-        );
+        return <Badge variant="danger">Rejected</Badge>;
       default:
-        return (
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-            Pending
-          </span>
-        );
+        return <Badge variant="warning">Pending</Badge>;
     }
+  };
+
+  const getRequestTypeBadge = (type) => {
+    const typeMap = {
+      deadline_extension: { label: "Deadline Extension", variant: "primary" },
+      mark_edit: { label: "Mark Edit", variant: "warning" },
+      resubmission: { label: "Resubmission", variant: "secondary" }
+    };
+    const config = typeMap[type] || { label: type, variant: "default" };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   // Filter logic
@@ -148,282 +147,243 @@ const RequestList = () => {
   return (
     <div className="space-y-6">
       {/* Tabs */}
-      <div className="bg-white rounded-lg p-1 shadow-sm inline-flex">
-        <button
-          onClick={() => setActiveTab("faculty")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "faculty"
-            ? "bg-indigo-50 text-indigo-700 shadow-sm"
-            : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-        >
-          <UserIcon className="h-4 w-4" />
-          Faculty Requests
-        </button>
-        <button
-          onClick={() => setActiveTab("access")}
-          className={`flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-colors ${activeTab === "access"
-            ? "bg-indigo-50 text-indigo-700 shadow-sm"
-            : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
-            }`}
-        >
-          <ShieldCheckIcon className="h-4 w-4" />
-          Access Requests
-        </button>
-      </div>
+      <Card padding="sm">
+        <div className="flex gap-2">
+          <Button
+            variant={activeTab === "faculty" ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setActiveTab("faculty")}
+            className="gap-2"
+          >
+            <UserIcon className="h-4 w-4" />
+            Faculty Requests
+          </Button>
+          <Button
+            variant={activeTab === "access" ? "primary" : "secondary"}
+            size="sm"
+            onClick={() => setActiveTab("access")}
+            className="gap-2"
+          >
+            <ShieldCheckIcon className="h-4 w-4" />
+            Access Requests
+          </Button>
+        </div>
+      </Card>
 
       {activeTab === "access" ? (
         <AccessRequestList />
       ) : (
-        <div className="bg-white rounded-lg shadow">
-          {/* Header & Filters */}
-          <div className="p-6 border-b border-gray-200">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="flex-1">
-                <h2 className="text-lg font-semibold text-gray-900">
-                  Faculty Requests
-                </h2>
-                <p className="text-sm text-gray-500">
-                  Manage requests from guides and panelists
-                </p>
+        <>
+          {/* Filters */}
+          <Card padding="sm">
+            <div className="flex flex-col md:flex-row gap-3">
+              <div className="flex-1 relative">
+                <input
+                  type="text"
+                  placeholder="Search by faculty, student, or employee ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none text-sm"
+                />
+                <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search requests..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500 w-full sm:w-64"
-                  />
-                  <MagnifyingGlassIcon className="absolute left-3 top-2.5 h-5 w-5 text-gray-400" />
-                </div>
+              <select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none text-sm"
+              >
+                <option value="all">All Types</option>
+                <option value="deadline_extension">Deadline Extension</option>
+                <option value="mark_edit">Mark Edit</option>
+                <option value="resubmission">Resubmission</option>
+              </select>
 
-                <select
-                  value={typeFilter}
-                  onChange={(e) => setTypeFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="all">All Types</option>
-                  <option value="deadline_extension">Deadline Extension</option>
-                  <option value="mark_edit">Mark Edit</option>
-                  <option value="resubmission">Resubmission</option>
-                </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none text-sm"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="approved">Approved</option>
+                <option value="rejected">Rejected</option>
+              </select>
 
-                <select
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-indigo-500 focus:border-indigo-500"
-                >
-                  <option value="all">All Status</option>
-                  <option value="pending">Pending</option>
-                  <option value="approved">Approved</option>
-                  <option value="rejected">Rejected</option>
-                </select>
-              </div>
+              <span className="flex items-center text-sm font-medium text-gray-600 px-3">
+                {filteredRequests.length} request{filteredRequests.length !== 1 ? 's' : ''}
+              </span>
             </div>
-          </div>
+          </Card>
 
-          {/* Request Table */}
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Faculty & Student
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Type & Reason
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Context
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Submitted
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Status
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                    Actions
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {loading ? (
-                  <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center">
-                      <div className="flex justify-center">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+          {/* Request List */}
+          {loading ? (
+            <Card>
+              <div className="py-12">
+                <LoadingSpinner />
+              </div>
+            </Card>
+          ) : filteredRequests.length === 0 ? (
+            <Card>
+              <EmptyState
+                icon={DocumentTextIcon}
+                title="No requests found"
+                description={searchQuery ? "Try adjusting your search criteria" : "No faculty requests match your current filters"}
+              />
+            </Card>
+          ) : (
+            <div className="space-y-3">
+              {filteredRequests.map((req) => (
+                <Card key={req._id} padding="md" className="hover:shadow-md transition-shadow">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                      {/* Faculty & Student Info */}
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Faculty</p>
+                        <p className="text-sm font-semibold text-gray-900">{req.faculty?.name}</p>
+                        <p className="text-xs text-gray-500 font-mono">{req.faculty?.employeeId}</p>
+                        <p className="text-xs text-gray-600 mt-1">for {req.student?.name}</p>
                       </div>
-                    </td>
-                  </tr>
-                ) : filteredRequests.length === 0 ? (
-                  <tr>
-                    <td
-                      colSpan="6"
-                      className="px-6 py-12 text-center text-gray-500"
-                    >
-                      <div className="flex flex-col items-center justify-center">
-                        <ExclamationCircleIcon className="h-10 w-10 text-gray-300 mb-3" />
-                        <p>No requests found matching your filters.</p>
+
+                      {/* Request Type & Reason */}
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Request Type</p>
+                        {getRequestTypeBadge(req.requestType)}
+                        <p className="text-xs text-gray-600 mt-2 line-clamp-2" title={req.reason}>
+                          {req.reason}
+                        </p>
                       </div>
-                    </td>
-                  </tr>
-                ) : (
-                  filteredRequests.map((req) => (
-                    <tr key={req._id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex flex-col">
-                          <span className="text-sm font-medium text-gray-900">
-                            {req.faculty?.name}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            for {req.student?.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-col gap-1">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800 w-fit">
-                            {req.requestType?.replace("_", " ").toUpperCase()}
-                          </span>
-                          <p
-                            className="text-xs text-gray-500 max-w-xs truncate"
-                            title={req.reason}
-                          >
-                            {req.reason}
-                          </p>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex flex-col">
-                          <span>{req.reviewType}</span>
-                          <span className="text-xs text-gray-400">
-                            {req.school}
-                          </span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        <div className="flex items-center gap-1">
-                          <ClockIcon className="h-4 w-4" />
+
+                      {/* Context */}
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Context</p>
+                        <p className="text-sm text-gray-700">{req.reviewType}</p>
+                        <p className="text-xs text-gray-500 mt-1">{req.school}</p>
+                      </div>
+
+                      {/* Status & Date */}
+                      <div>
+                        <p className="text-xs font-medium text-gray-500 uppercase mb-1">Status</p>
+                        {getStatusBadge(req.status)}
+                        <div className="flex items-center gap-1 text-xs text-gray-500 mt-2">
+                          <ClockIcon className="h-3 w-3" />
                           {new Date(req.createdAt).toLocaleDateString()}
                         </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {getStatusBadge(req.status)}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        {req.status === "pending" && (
-                          <div className="flex justify-end gap-2">
-                            <button
-                              onClick={() => handleActionClick(req, "reject")}
-                              className="text-red-600 hover:text-red-900 p-1 hover:bg-red-50 rounded"
-                              title="Reject"
-                            >
-                              <XCircleIcon className="h-5 w-5" />
-                            </button>
-                            <button
-                              onClick={() => handleActionClick(req, "approve")}
-                              className="text-green-600 hover:text-green-900 p-1 hover:bg-green-50 rounded"
-                              title="Approve"
-                            >
-                              <CheckCircleIcon className="h-5 w-5" />
-                            </button>
-                          </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    {req.status === "pending" && (
+                      <div className="flex gap-2 shrink-0">
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          onClick={() => handleActionClick(req, "reject")}
+                          className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                        >
+                          <XCircleIcon className="h-4 w-4 mr-1" />
+                          Reject
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="sm"
+                          onClick={() => handleActionClick(req, "approve")}
+                          className="bg-green-600 hover:bg-green-700"
+                        >
+                          <CheckCircleIcon className="h-4 w-4 mr-1" />
+                          Approve
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </>
       )}
 
-      {/* Action Modal (Only for Faculty Requests) */}
+      {/* Action Modal */}
       {selectedRequest && activeTab === "faculty" && (
-        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50 flex items-center justify-center">
-          <div className="relative p-5 border w-full max-w-md shadow-lg rounded-lg bg-white">
-            <div className="mt-3 text-center sm:text-left">
-              <h3 className="text-lg leading-6 font-medium text-gray-900 capitalize">
-                {actionType} Request
-              </h3>
+        <Modal
+          isOpen={!!selectedRequest}
+          onClose={handleCloseModal}
+          title={`${actionType === "approve" ? "Approve" : "Reject"} Request`}
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="bg-gray-50 p-4 rounded-lg">
+              <p className="text-sm text-gray-600">
+                Request from:{" "}
+                <span className="font-semibold text-gray-900">
+                  {selectedRequest.faculty?.name}
+                </span>
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Type: {getRequestTypeBadge(selectedRequest.requestType)}
+              </p>
+              <p className="text-sm text-gray-600 mt-1">
+                Reason: <span className="text-gray-900">{selectedRequest.reason}</span>
+              </p>
+            </div>
 
-              <div className="mt-2 text-sm text-gray-500 mb-4">
-                <p>
-                  Request from:{" "}
-                  <span className="font-semibold">
-                    {selectedRequest.faculty?.name}
-                  </span>
-                </p>
-                <p>Type: {selectedRequest.requestType}</p>
-                <p>Reason: {selectedRequest.reason}</p>
-              </div>
-
-              <div className="mt-4 space-y-4">
-                {actionType === "approve" &&
-                  selectedRequest.requestType === "deadline_extension" && (
-                    <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1">
-                        New Deadline (Optional)
-                      </label>
-                      <input
-                        type="datetime-local"
-                        value={newDeadline}
-                        onChange={(e) => setNewDeadline(e.target.value)}
-                        className="w-full border rounded px-2 py-1.5 text-sm"
-                      />
-                    </div>
-                  )}
-
+            {actionType === "approve" &&
+              selectedRequest.requestType === "deadline_extension" && (
                 <div>
-                  <label className="block text-xs font-medium text-gray-700 mb-1">
-                    {actionType === "approve"
-                      ? "Remarks (Optional)"
-                      : "Reason for Rejection"}
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    New Deadline (Optional)
                   </label>
-                  <textarea
-                    className="w-full border rounded p-2 text-sm"
-                    rows="3"
-                    value={actionRemarks}
-                    onChange={(e) => setActionRemarks(e.target.value)}
-                    placeholder={
-                      actionType === "approve"
-                        ? "Add any notes..."
-                        : "Why is this being rejected?"
-                    }
-                  ></textarea>
+                  <input
+                    type="datetime-local"
+                    value={newDeadline}
+                    onChange={(e) => setNewDeadline(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
+                  />
                 </div>
-              </div>
+              )}
 
-              <div className="mt-6 flex justify-end gap-3">
-                <button
-                  onClick={handleCloseModal}
-                  className="px-4 py-2 bg-white text-gray-500 border border-gray-300 rounded-md shadow-sm text-sm font-medium hover:bg-gray-50"
-                  disabled={submitting}
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={handleSubmitAction}
-                  className={`px-4 py-2 rounded-md shadow-sm text-sm font-medium text-white ${actionType === "approve"
-                    ? "bg-green-600 hover:bg-green-700"
-                    : "bg-red-600 hover:bg-red-700"
-                    }`}
-                  disabled={submitting}
-                >
-                  {submitting
-                    ? "Processing..."
-                    : actionType === "approve"
-                      ? "Approve"
-                      : "Reject"}
-                </button>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                {actionType === "approve"
+                  ? "Remarks (Optional)"
+                  : "Reason for Rejection"}
+              </label>
+              <textarea
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none"
+                rows="3"
+                value={actionRemarks}
+                onChange={(e) => setActionRemarks(e.target.value)}
+                placeholder={
+                  actionType === "approve"
+                    ? "Add any notes..."
+                    : "Why is this being rejected?"
+                }
+              />
+            </div>
+
+            <div className="flex justify-end gap-3 pt-4">
+              <Button
+                variant="secondary"
+                onClick={handleCloseModal}
+                disabled={submitting}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant={actionType === "approve" ? "primary" : "secondary"}
+                onClick={handleSubmitAction}
+                disabled={submitting}
+                className={actionType === "reject" ? "bg-red-600 hover:bg-red-700 text-white" : ""}
+              >
+                {submitting
+                  ? "Processing..."
+                  : actionType === "approve"
+                    ? "Approve"
+                    : "Reject"}
+              </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );

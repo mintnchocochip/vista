@@ -9,14 +9,25 @@ import { fetchProjects } from "../services/adminApi";
 
 const ProjectManagement = () => {
   const [activeTab, setActiveTab] = useState("view");
-  const [totalProjects, setTotalProjects] = useState(0);
+  const [stats, setStats] = useState({
+    total: 0,
+    withGuides: 0,
+    panelAssigned: 0,
+    bestProjects: 0,
+  });
 
   useEffect(() => {
     const loadStats = async () => {
       try {
         const response = await fetchProjects({});
         if (response.success) {
-          setTotalProjects(response.projects?.length || 0);
+          const projects = response.projects || [];
+          setStats({
+            total: projects.length,
+            withGuides: projects.filter((p) => p.guide).length,
+            panelAssigned: projects.filter((p) => p.panel || p.panelId).length,
+            bestProjects: projects.filter((p) => p.bestProject).length,
+          });
         }
       } catch (error) {
         console.error("Failed to load stats", error);
@@ -55,7 +66,7 @@ const ProjectManagement = () => {
         {/* Project Tabs */}
         <div className="mb-6 bg-white rounded-lg shadow-sm p-2">
           <div className="flex flex-col sm:flex-row justify-between items-center gap-4">
-            <div className="flex gap-2 w-full sm:w-auto">
+            <div className="flex gap-2 w-full sm:w-auto flex-wrap">
               {projectTabs.map((tab) => {
                 const Icon = tab.icon;
                 const isActive = activeTab === tab.id;
@@ -81,11 +92,31 @@ const ProjectManagement = () => {
               })}
             </div>
 
-            <div className="px-4 flex items-center gap-2 text-sm text-gray-600">
-              <span className="font-medium">Total Projects:</span>
-              <span className="bg-blue-100 text-blue-800 py-1 px-3 rounded-full font-bold text-xs">
-                {totalProjects}
-              </span>
+            <div className="px-4 flex items-center gap-4 text-xs text-gray-600">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Total:</span>
+                <span className="bg-blue-100 text-blue-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.total}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 hidden md:flex">
+                <span className="font-medium">With Guides:</span>
+                <span className="bg-orange-100 text-orange-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.withGuides}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 hidden md:flex">
+                <span className="font-medium">Panel Assigned:</span>
+                <span className="bg-purple-100 text-purple-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.panelAssigned}
+                </span>
+              </div>
+              <div className="flex items-center gap-2 hidden lg:flex">
+                <span className="font-medium">Best:</span>
+                <span className="bg-yellow-100 text-yellow-800 py-0.5 px-2 rounded-full font-bold">
+                  {stats.bestProjects}
+                </span>
+              </div>
             </div>
           </div>
         </div>
