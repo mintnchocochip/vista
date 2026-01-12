@@ -29,6 +29,7 @@ import CoordinatorModificationsManagement from "./features/project-coordinator/p
 import Login from "./features/auth/pages/Login";
 import ForgotPassword from "./features/auth/pages/ForgotPassword";
 import InstructionsPage from "./features/auth/pages/InstructionsPage";
+import BlockedPage from "./features/auth/pages/BlockedPage";
 
 // Protected Route Component
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -114,6 +115,7 @@ function AppRoutes() {
       <Route path="/" element={<InstructionsPage />} />
       <Route path="/login" element={<Login />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/blocked" element={<BlockedPage />} />
       <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
       <Route
@@ -149,10 +151,7 @@ function AppRoutes() {
         element={
           <AdminProvider>
             <Routes>
-              <Route
-                path=""
-                element={<Navigate to="students" replace />}
-              />
+              <Route path="" element={<Navigate to="students" replace />} />
               <Route
                 path="students"
                 element={
@@ -228,10 +227,7 @@ function AppRoutes() {
         element={
           <CoordinatorProvider>
             <Routes>
-              <Route
-                path=""
-                element={<Navigate to="students" replace />}
-              />
+              <Route path="" element={<Navigate to="students" replace />} />
               <Route
                 path="students"
                 element={

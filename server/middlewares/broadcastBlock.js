@@ -1,9 +1,10 @@
 import BroadcastMessage from "../models/broadcastMessageSchema.js";
 import Faculty from "../models/facultySchema.js";
+import ProjectCoordinator from "../models/projectCoordinatorSchema.js";
 import { logger } from "../utils/logger.js";
 
 /**
- * Block faculty API access when an active blocking broadcast exists
+ * Block faculty and project coordinator API access when an active blocking broadcast exists
  */
 export const broadcastBlockMiddleware = async (req, res, next) => {
   try {
@@ -12,26 +13,52 @@ export const broadcastBlockMiddleware = async (req, res, next) => {
       return next();
     }
 
-    const facultyId = req.user?._id;
-    if (!facultyId) {
+    const userId = req.user?._id;
+    const userRole = req.user?.role;
+
+    if (!userId) {
       return next();
     }
 
-    const faculty = await Faculty.findById(facultyId)
-      .select("school program")
-      .lean();
-
-    if (!faculty) {
+    // Only block faculty and project_coordinator roles
+    if (userRole !== "faculty" && userRole !== "project_coordinator") {
       return next();
     }
 
-    const facultySchools = Array.isArray(faculty.school)
-      ? faculty.school.filter(Boolean)
-      : [];
+    let facultySchools = [];
+    let facultyPrograms = [];
 
-    const facultyPrograms = Array.isArray(faculty.program)
-      ? faculty.program.filter(Boolean)
-      : [];
+    // Get school and program based on user type
+    if (userRole === "project_coordinator") {
+      // For project coordinators, get their coordinator record
+      const coordinator = await ProjectCoordinator.findOne({ faculty: userId })
+        .select("school program")
+        .lean();
+
+      if (!coordinator) {
+        return next();
+      }
+
+      facultySchools = [coordinator.school].filter(Boolean);
+      facultyPrograms = [coordinator.program].filter(Boolean);
+    } else {
+      // For faculty, get their faculty record
+      const faculty = await Faculty.findById(userId)
+        .select("school program")
+        .lean();
+
+      if (!faculty) {
+        return next();
+      }
+
+      facultySchools = Array.isArray(faculty.school)
+        ? faculty.school.filter(Boolean)
+        : [];
+
+      facultyPrograms = Array.isArray(faculty.program)
+        ? faculty.program.filter(Boolean)
+        : [];
+    }
 
     const now = new Date();
 
@@ -42,7 +69,7 @@ export const broadcastBlockMiddleware = async (req, res, next) => {
           isActive: true,
           expiresAt: { $lte: now },
         },
-        { $set: { isActive: false } }
+        { $set: { isActive: false } },
       );
     } catch (deactivateError) {
       logger.warn("broadcast_auto_deactivate_failed", {
@@ -79,13 +106,15 @@ export const broadcastBlockMiddleware = async (req, res, next) => {
 
     if (blockingBroadcast) {
       logger.info("access_blocked_by_broadcast", {
-        facultyId,
+        userId,
+        userRole,
         broadcastId: blockingBroadcast._id,
       });
 
       return res.status(403).json({
         success: false,
         message: "Access temporarily blocked by administrator.",
+        blocked: true,
         broadcast: blockingBroadcast,
       });
     }
