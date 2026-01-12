@@ -246,10 +246,7 @@ const PanelViewTab = ({ isPrimary = false }) => {
                             <span className="text-sm text-gray-600">
                               {panel.members?.length || 0} Faculty
                             </span>
-                            <span className="text-sm text-gray-400">•</span>
-                            <span className="text-sm text-gray-600">
-                              {mainPanelCount + reviewPanelCount} Projects
-                            </span>
+
                           </div>
                         </div>
                         <Badge
