@@ -48,7 +48,7 @@ export class ReportService {
             Faculty.find({}).lean(), // Faculty guidelines usually span years, but can filter if needed
             Project.find(baseQuery).populate("guideFaculty").populate("panel").lean(),
             Marks.find(baseQuery).lean(),
-            Panel.find(baseQuery).populate("facultyMembers").lean(),
+            Panel.find(baseQuery).populate("members.faculty").lean(),
         ]);
 
         return {
@@ -128,7 +128,7 @@ export class ReportService {
 
         // Get all panels
         const panels = await Panel.find(query)
-            .populate("facultyMembers", "name email")
+            .populate("members.faculty", "name email")
             .lean();
 
         const results = [];
@@ -155,7 +155,7 @@ export class ReportService {
 
             results.push({
                 panelName: panel.panelName,
-                members: panel.facultyMembers.map(f => f.name).join(", "),
+                members: panel.members?.map(m => m.faculty?.name || "Unknown").join(", ") || "",
                 totalProjects: projects.length,
                 totalStudents: totalStudents,
                 marksSubmitted: submittedMarksCount,
@@ -267,7 +267,7 @@ export class ReportService {
 
             // Count panels they are part of
             const panelCount = await Panel.countDocuments({
-                facultyMembers: f._id,
+                "members.faculty": f._id,
                 academicYear: filters.year || filters.academicYear
             });
 

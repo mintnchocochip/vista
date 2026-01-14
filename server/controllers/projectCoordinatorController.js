@@ -4,6 +4,7 @@ import { PanelService } from "../services/panelService.js";
 import { StudentService } from "../services/studentService.js";
 import { ProjectService } from "../services/projectService.js";
 import { MarkingSchemaService } from "../services/markingSchemaService.js";
+import { ReportService } from "../services/reportService.js";
 import Faculty from "../models/facultySchema.js";
 import Student from "../models/studentSchema.js";
 import Project from "../models/projectSchema.js";
@@ -2534,6 +2535,31 @@ export async function getFacultyWorkloadReport(req, res) {
       data: workload,
     });
   } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message,
+    });
+  }
+}
+
+export async function getReportData(req, res) {
+  try {
+    const { type } = req.query;
+    const context = getCoordinatorContext(req);
+
+    // Merge query filters with context (context overrides to ensure security)
+    const filters = { ...req.query, ...context };
+
+    console.log(`Generating report ${type} for context:`, context);
+
+    const reportData = await ReportService.generateReport(type, filters);
+
+    res.status(200).json({
+      success: true,
+      data: reportData,
+    });
+  } catch (error) {
+    console.error("Report generation error:", error);
     res.status(500).json({
       success: false,
       message: error.message,

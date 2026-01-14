@@ -302,6 +302,7 @@ router.delete(
 /**
  * Reporting (dept-specific)
  */
+router.get("/reports", coordinatorController.getReportData);
 router.get("/reports/overview", coordinatorController.getOverviewReport);
 router.get("/reports/projects", coordinatorController.getProjectsReport);
 router.get("/reports/marks", coordinatorController.getMarksReport);
