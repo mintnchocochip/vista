@@ -42,13 +42,22 @@ export class MarksService {
     }
 
     // Get student and faculty context
-    const [studentDoc, facultyDoc] = await Promise.all([
+    const [studentDoc, facultyDoc, projectDocFull] = await Promise.all([
       Student.findById(student),
       Faculty.findById(facultyId),
+      Project.findById(project)
     ]);
 
-    if (!studentDoc || !facultyDoc) {
-      throw new Error("Student or faculty not found.");
+    if (!studentDoc || !facultyDoc || !projectDocFull) {
+      throw new Error("Student, Faculty, or Project not found.");
+    }
+
+    // --- PPT Approval Check (Panel Only) ---
+    if (facultyType === 'panel') {
+      const pptApproval = projectDocFull.pptApprovals?.find(p => p.reviewType === reviewType);
+      if (!pptApproval || !pptApproval.isApproved) {
+        throw new Error(`PPT Approval Pending. Guide must approve the PPT before panel can enter marks.`);
+      }
     }
 
     const { school, program } = extractPrimaryContext(facultyDoc);

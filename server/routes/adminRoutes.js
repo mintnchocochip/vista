@@ -33,6 +33,8 @@ router.post(
 
 router.put("/master-data/schools/:id", adminController.updateSchool);
 
+router.delete("/master-data/schools/:id", adminController.deleteSchool);
+
 router.post(
   "/master-data/programs",
   validateRequired(["name", "code", "school"]),

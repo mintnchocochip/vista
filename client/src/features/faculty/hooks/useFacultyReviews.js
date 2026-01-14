@@ -191,7 +191,8 @@ export const useFacultyReviews = (facultyId, filters = {}) => {
                             panelName: activePanel?.panelName || activePanel?.name || 'TBD',
                             venue: activePanel?.venue || 'TBD',
                             role: isGuide ? 'guide' : 'panel',
-                            roleLabel: roleLabel // "Temporary Panel", "Panel", "Guide"
+                            roleLabel: roleLabel, // "Temporary Panel", "Panel", "Guide"
+                            pptApprovals: project.pptApprovals || [] // Pass PPT approvals to UI
                         };
                     });
 

@@ -55,11 +55,18 @@ const TeamsModal = ({ isOpen, onClose, review, onEnterMarks }) => {
               const isLocked = isExpired && !team.isUnlocked;
               const isPending = team.requestStatus === 'pending';
 
+              // PPT Approval Logic
+              const isPanelRole = team.role === 'panel' || (team.roleLabel && team.roleLabel.toLowerCase().includes('panel'));
+              // review.id maps to reviewType in backend
+              const pptApproval = team.pptApprovals?.find(a => a.reviewType === review.id);
+              const isPPTApproved = pptApproval && pptApproval.isApproved;
+              const isBlockedByPPT = isPanelRole && !isPPTApproved;
+
               return (
                 <div
                   key={team.id}
                   className={`flex items-center justify-between p-4 border rounded-lg transition-all 
-                        ${isLocked ? 'bg-slate-50 border-slate-200' : 'bg-white hover:border-blue-400 hover:shadow-sm'}`}
+                        ${isLocked || isBlockedByPPT ? 'bg-slate-50 border-slate-200' : 'bg-white hover:border-blue-400 hover:shadow-sm'}`}
                 >
                   <div className="flex items-center gap-3 flex-1">
                     <div className="flex-shrink-0">
@@ -70,6 +77,10 @@ const TeamsModal = ({ isOpen, onClose, review, onEnterMarks }) => {
                       ) : isPending ? (
                         <div className="w-10 h-10 bg-yellow-50 rounded-lg flex items-center justify-center border border-yellow-200">
                           <ClockIcon className="w-6 h-6 text-yellow-600" />
+                        </div>
+                      ) : isBlockedByPPT ? (
+                        <div className="w-10 h-10 bg-orange-50 rounded-lg flex items-center justify-center border border-orange-200">
+                          <LockClosedIcon className="w-5 h-5 text-orange-400" />
                         </div>
                       ) : isLocked ? (
                         <div className="w-10 h-10 bg-slate-100 rounded-lg flex items-center justify-center border border-slate-200">
@@ -95,6 +106,11 @@ const TeamsModal = ({ isOpen, onClose, review, onEnterMarks }) => {
                         {team.isUnlocked && isExpired && (
                           <span className="px-1.5 py-0.5 bg-green-100 text-green-700 text-[10px] font-bold uppercase tracking-wide rounded border border-green-200 flex items-center gap-1">
                             <LockOpenIcon className="w-3 h-3" /> Unlocked
+                          </span>
+                        )}
+                        {isBlockedByPPT && (
+                          <span className="px-1.5 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-bold uppercase tracking-wide rounded border border-orange-200">
+                            PPT Approval Pending
                           </span>
                         )}
                       </div>
@@ -136,21 +152,26 @@ const TeamsModal = ({ isOpen, onClose, review, onEnterMarks }) => {
                     size="sm"
                     variant={
                       isPending ? 'secondary' :
-                        isLocked ? 'secondary' :
-                          (team.marksEntered ? 'secondary' : 'primary')
+                        isBlockedByPPT ? 'secondary' :
+                          isLocked ? 'secondary' :
+                            (team.marksEntered ? 'secondary' : 'primary')
                     }
                     className={
                       isPending ? 'text-yellow-700 border-yellow-200 bg-yellow-50 opacity-100 cursor-not-allowed' :
-                        isLocked ? 'text-orange-600 border-orange-200 hover:bg-orange-50' : ''
+                        isBlockedByPPT ? 'text-orange-700 border-orange-200 bg-orange-50 opacity-100 cursor-not-allowed' :
+                          isLocked ? 'text-orange-600 border-orange-200 hover:bg-orange-50' : ''
                     }
-                    disabled={isPending}
+                    disabled={isPending || isBlockedByPPT}
+                    title={isBlockedByPPT ? 'Guide must approve PPT first' : ''}
                     onClick={() => {
-                      if (!isPending) {
+                      if (!isPending && !isBlockedByPPT) {
                         isLocked ? setRequestTeam(team) : onEnterMarks(team);
                       }
                     }}
                   >
-                    {isPending ? 'Request Pending' : (isLocked ? 'Request Edit' : (team.marksEntered ? 'Edit Marks' : 'Enter Marks'))}
+                    {isPending ? 'Request Pending' :
+                      isBlockedByPPT ? 'PPT Pending' :
+                        (isLocked ? 'Request Edit' : (team.marksEntered ? 'Edit Marks' : 'Enter Marks'))}
                   </Button>
                 </div>
               );

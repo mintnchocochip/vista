@@ -72,6 +72,16 @@ const projectSchema = new mongoose.Schema(
     // Review-specific panel assignments
     reviewPanels: [reviewPanelAssignmentSchema],
 
+    // Track PPT Approvals for reviews
+    pptApprovals: [
+      {
+        reviewType: { type: String, required: true },
+        isApproved: { type: Boolean, default: false },
+        approvedBy: { type: mongoose.Schema.Types.ObjectId, ref: "Faculty" },
+        approvedAt: { type: Date },
+      },
+    ],
+
     academicYear: { type: String, required: true },
     school: { type: String, required: true },
     program: { type: String, required: true },

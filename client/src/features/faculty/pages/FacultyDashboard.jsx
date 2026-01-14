@@ -9,6 +9,7 @@ import FacultyAcademicContextSelector from '../components/FacultyAcademicContext
 import Button from '../../../shared/components/Button';
 import { CalendarIcon, AcademicCapIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../shared/hooks/useAuth';
+import PPTApprovalSection from '../components/PPTApprovalSection';
 
 
 const FacultyDashboard = () => {
@@ -160,6 +161,16 @@ const FacultyDashboard = () => {
                             </p>
                         </div>
                     </div>
+
+
+
+                    {/* NEW: PPT Approval Section */}
+                    {filters.role === 'guide' && (
+                        <PPTApprovalSection
+                            reviews={active}
+                            onRefresh={refreshReviews}
+                        />
+                    )}
 
                     {/* Active Reviews (Always Open) */}
                     <section className="animate-slideUp">

@@ -346,6 +346,30 @@ const CoordinatorReports = () => {
                                 </div>
                             ) : (
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="col-span-1 md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 mb-2">
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                School (Locked)
+                                            </label>
+                                            <Input
+                                                type="text"
+                                                value={profile?.school || "Loading..."}
+                                                disabled
+                                                className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                                            />
+                                        </div>
+                                        <div>
+                                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                                Program (Locked)
+                                            </label>
+                                            <Input
+                                                type="text"
+                                                value={profile?.program || "Loading..."}
+                                                disabled
+                                                className="bg-gray-100 text-gray-500 cursor-not-allowed"
+                                            />
+                                        </div>
+                                    </div>
 
                                     {/* Marks Range Filters */}
                                     {selectedReportData?.filters.includes('minMarks') && (

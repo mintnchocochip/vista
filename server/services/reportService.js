@@ -148,10 +148,14 @@ export class ReportService {
                 facultyType: 'panel'
             });
 
-            // Note: Each student gets 1 mark entry from panel (usually aggregated or per panelist?)
-            // Assuming 1 split mark entry per student from the panel entity (or per panel member?).
-            // Based on schema: `faculty` field in Marks. If panel marks are submitted *as a panel*, 
-            // usually one entry per student.
+            // Calculate expected marks: (Students * Panel Members)
+            // If no members or no students, expected is 0.
+            const totalMembers = panel.members ? panel.members.length : 0;
+            const expectedMarks = totalStudents * totalMembers;
+
+            // Status is completed if submitted >= expected (and expected > 0)
+            // Handle edge case where expected is 0 (no members or no students) -> marked as N/A or Completed?
+            const isComplete = totalStudents > 0 && totalMembers > 0 && submittedMarksCount >= expectedMarks;
 
             results.push({
                 panelName: panel.panelName,
@@ -159,8 +163,8 @@ export class ReportService {
                 totalProjects: projects.length,
                 totalStudents: totalStudents,
                 marksSubmitted: submittedMarksCount,
-                pending: totalStudents - submittedMarksCount,
-                status: totalStudents > 0 && totalStudents === submittedMarksCount ? "Completed" : "Pending"
+                pending: Math.max(0, expectedMarks - submittedMarksCount),
+                status: isComplete ? "Completed" : "Pending"
             });
         }
 
@@ -335,31 +339,36 @@ export class ReportService {
      */
     static async generateMarksDistributionReport(filters) {
         const query = this._buildMatchQuery(filters);
-        const marks = await Marks.find(query).select('totalMarks facultyType').lean();
+        const marks = await Marks.find(query).select('totalMarks maxTotalMarks facultyType').lean();
 
-        // Buckets
+        // Buckets for Percentages
         const distribution = {
-            '0-40': 0,
-            '41-60': 0,
-            '61-80': 0,
-            '81-90': 0,
-            '91-100': 0
+            '0-40%': 0,
+            '41-60%': 0,
+            '61-80%': 0,
+            '81-90%': 0,
+            '91-100%': 0
         };
 
         marks.forEach(m => {
-            const val = m.totalMarks;
-            if (val <= 40) distribution['0-40']++;
-            else if (val <= 60) distribution['41-60']++;
-            else if (val <= 80) distribution['61-80']++;
-            else if (val <= 90) distribution['81-90']++;
-            else distribution['91-100']++;
+            const obtained = m.totalMarks || 0;
+            const max = m.maxTotalMarks || 100; // Default to 100 if missing, though schema enforces it
+
+            // Calculate percentage
+            const percentage = (obtained / max) * 100;
+
+            if (percentage <= 40) distribution['0-40%']++;
+            else if (percentage <= 60) distribution['41-60%']++;
+            else if (percentage <= 80) distribution['61-80%']++;
+            else if (percentage <= 90) distribution['81-90%']++;
+            else distribution['91-100%']++;
         });
 
         // Transform for table
         return Object.entries(distribution).map(([range, count]) => ({
             range,
             count,
-            percentage: marks.length ? ((count / marks.length) * 100).toFixed(2) + '%' : '0%'
+            percentageOfStudents: marks.length ? ((count / marks.length) * 100).toFixed(2) + '%' : '0%'
         }));
     }
 
