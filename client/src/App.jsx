@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./shared/hooks/useAuth";
 import { AdminProvider } from "./features/admin/context/AdminContext";
 import { CoordinatorProvider } from "./features/project-coordinator/context/CoordinatorContext";
+import GlobalErrorBoundary from "./shared/components/GlobalErrorBoundary";
 
 import FacultyDashboard from "./features/faculty/pages/FacultyDashboard";
 import FacultyTutorial from "./features/faculty/pages/tutorial/FacultyTutorial";
@@ -111,194 +112,196 @@ const UnauthorizedPage = () => {
 
 function AppRoutes() {
   return (
-    <Routes>
-      <Route path="/" element={<InstructionsPage />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/blocked" element={<BlockedPage />} />
-      <Route path="/unauthorized" element={<UnauthorizedPage />} />
+    <GlobalErrorBoundary>
+      <Routes>
+        <Route path="/" element={<InstructionsPage />} />
+        <Route path="/login" element={<Login />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/blocked" element={<BlockedPage />} />
+        <Route path="/unauthorized" element={<UnauthorizedPage />} />
 
-      <Route
-        path="/faculty"
-        element={
-          <ProtectedRoute allowedRoles={["faculty"]}>
-            <FacultyDashboard />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/faculty"
+          element={
+            <ProtectedRoute allowedRoles={["faculty"]}>
+              <FacultyDashboard />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/faculty/tutorial"
-        element={
-          <ProtectedRoute allowedRoles={["faculty"]}>
-            <FacultyTutorial />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/faculty/tutorial"
+          element={
+            <ProtectedRoute allowedRoles={["faculty"]}>
+              <FacultyTutorial />
+            </ProtectedRoute>
+          }
+        />
 
-      <Route
-        path="/faculty/reviews"
-        element={
-          <ProtectedRoute allowedRoles={["faculty"]}>
-            <GuideReviews />
-          </ProtectedRoute>
-        }
-      />
+        <Route
+          path="/faculty/reviews"
+          element={
+            <ProtectedRoute allowedRoles={["faculty"]}>
+              <GuideReviews />
+            </ProtectedRoute>
+          }
+        />
 
-      {/* Admin Routes - accessible by admin role */}
-      <Route
-        path="/admin/*"
-        element={
-          <AdminProvider>
-            <Routes>
-              <Route path="" element={<Navigate to="students" replace />} />
-              <Route
-                path="students"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <StudentManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="faculty"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <FacultyManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="projects"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <ProjectManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="panels"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <PanelManagementLanding />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="reports"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <AdminReports />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="requests"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <RequestManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="settings"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <AdminSettings />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="broadcasts"
-                element={
-                  <ProtectedRoute allowedRoles={["admin"]}>
-                    <AdminBroadcasts />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </AdminProvider>
-        }
-      />
+        {/* Admin Routes - accessible by admin role */}
+        <Route
+          path="/admin/*"
+          element={
+            <AdminProvider>
+              <Routes>
+                <Route path="" element={<Navigate to="students" replace />} />
+                <Route
+                  path="students"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <StudentManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="faculty"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <FacultyManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="projects"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <ProjectManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="panels"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <PanelManagementLanding />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="reports"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <AdminReports />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="requests"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <RequestManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="settings"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <AdminSettings />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="broadcasts"
+                  element={
+                    <ProtectedRoute allowedRoles={["admin"]}>
+                      <AdminBroadcasts />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </AdminProvider>
+          }
+        />
 
-      {/* Project Coordinator Routes - separate from admin */}
-      <Route
-        path="/coordinator/*"
-        element={
-          <CoordinatorProvider>
-            <Routes>
-              <Route path="" element={<Navigate to="students" replace />} />
-              <Route
-                path="students"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorStudentManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="faculty"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorFacultyManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="projects"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorProjectManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="panels"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorPanelManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="requests"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorRequestManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="request-access"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorRequestAccess />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="rubrics"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorRubricsManagement />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="modifications"
-                element={
-                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
-                    <CoordinatorModificationsManagement />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-          </CoordinatorProvider>
-        }
-      />
+        {/* Project Coordinator Routes - separate from admin */}
+        <Route
+          path="/coordinator/*"
+          element={
+            <CoordinatorProvider>
+              <Routes>
+                <Route path="" element={<Navigate to="students" replace />} />
+                <Route
+                  path="students"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorStudentManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="faculty"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorFacultyManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="projects"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorProjectManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="panels"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorPanelManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="requests"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorRequestManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="request-access"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorRequestAccess />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="rubrics"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorRubricsManagement />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="modifications"
+                  element={
+                    <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                      <CoordinatorModificationsManagement />
+                    </ProtectedRoute>
+                  }
+                />
+              </Routes>
+            </CoordinatorProvider>
+          }
+        />
 
-      <Route path="*" element={<Navigate to="/" />} />
-    </Routes>
+        <Route path="*" element={<Navigate to="/" />} />
+      </Routes>
+    </GlobalErrorBoundary>
   );
 }
 

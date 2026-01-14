@@ -1,5 +1,5 @@
-// src/features/auth/pages/Login.jsx
 import React, { useState } from "react";
+import { EyeIcon, EyeSlashIcon } from "@heroicons/react/24/outline";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../../shared/hooks/useAuth";
 import Button from "../../../shared/components/Button";
@@ -10,6 +10,7 @@ import { useToast } from "../../../shared/hooks/useToast";
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showRoleModal, setShowRoleModal] = useState(false);
@@ -17,6 +18,10 @@ const Login = () => {
   const { login } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+
+  const togglePasswordVisibility = () => {
+    setShowPassword(!showPassword);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -103,11 +108,19 @@ const Login = () => {
 
           <Input
             label="Password"
-            type="password"
+            type={showPassword ? "text" : "password"}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             required
+            endIcon={
+              showPassword ? (
+                <EyeSlashIcon className="h-5 w-5" />
+              ) : (
+                <EyeIcon className="h-5 w-5" />
+              )
+            }
+            onEndIconClick={togglePasswordVisibility}
           />
 
           <Button

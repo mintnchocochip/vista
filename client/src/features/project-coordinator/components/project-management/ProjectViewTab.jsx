@@ -9,12 +9,16 @@ import {
   UserGroupIcon,
   UsersIcon,
   MagnifyingGlassIcon,
+  Squares2X2Icon,
+  ListBulletIcon,
 } from "@heroicons/react/24/outline";
 import { formatPanelName } from "../../utils/panelUtils";
 
 const ProjectViewTab = ({ projects = [], isPrimary = false }) => {
   const [selectedProject, setSelectedProject] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
+
+  const [viewMode, setViewMode] = useState("grid"); // 'grid' or 'list'
 
   const filteredProjects = projects.filter((project) => {
     const query = searchQuery.toLowerCase();
@@ -41,17 +45,41 @@ const ProjectViewTab = ({ projects = [], isPrimary = false }) => {
 
   return (
     <>
-      {/* Search Bar */}
+      {/* Search Bar & View Toggle */}
       <div className="mb-6">
-        <div className="relative">
-          <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Search by project name, student, guide, or panel..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-          />
+        <div className="flex gap-4">
+          <div className="relative flex-1">
+            <MagnifyingGlassIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by project name, student, guide, or panel..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
+            />
+          </div>
+          <div className="flex bg-gray-100 p-1 rounded-lg border border-gray-200">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`p-2 rounded-md transition-all ${viewMode === "grid"
+                ? "bg-white shadow-sm text-blue-600"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                }`}
+              title="Grid View"
+            >
+              <Squares2X2Icon className="h-5 w-5" />
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`p-2 rounded-md transition-all ${viewMode === "list"
+                ? "bg-white shadow-sm text-blue-600"
+                : "text-gray-500 hover:text-gray-700 hover:bg-gray-200"
+                }`}
+              title="List View"
+            >
+              <ListBulletIcon className="h-5 w-5" />
+            </button>
+          </div>
         </div>
       </div>
 
@@ -59,7 +87,7 @@ const ProjectViewTab = ({ projects = [], isPrimary = false }) => {
         <div className="text-center py-12 text-gray-500">
           <p className="text-lg">No projects match your search</p>
         </div>
-      ) : (
+      ) : viewMode === "grid" ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {filteredProjects.map((project) => {
             const teamSize = project.teamMembers?.length || 0;
@@ -125,6 +153,70 @@ const ProjectViewTab = ({ projects = [], isPrimary = false }) => {
               </Card>
             );
           })}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <table className="min-w-full divide-y divide-gray-200">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Project
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Type
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Team Size
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Guide / Panel
+                </th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                  Actions
+                </th>
+              </tr>
+            </thead>
+            <tbody className="bg-white divide-y divide-gray-200">
+              {filteredProjects.map((project) => {
+                const teamSize = project.teamMembers?.length || 0;
+                const guideName = project.guide?.name || "Not Assigned";
+                const panelName = project.panel ? formatPanelName(project.panel) : null;
+
+                return (
+                  <tr
+                    key={project._id || project.id}
+                    className="hover:bg-gray-50 cursor-pointer transition-colors"
+                    onClick={() => setSelectedProject(project)}
+                  >
+                    <td className="px-6 py-4">
+                      <div className="text-sm font-medium text-gray-900 line-clamp-2">
+                        {project.name || project.title}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">
+                        {project.type || "Capstone Project"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="text-sm text-gray-500">
+                        {teamSize} {teamSize === 1 ? "member" : "members"}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 font-medium">{guideName}</div>
+                      {panelName && (
+                        <div className="text-xs text-gray-500 mt-0.5">{panelName}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm text-blue-600 hover:text-blue-900 font-medium">
+                      View
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
