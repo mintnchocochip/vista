@@ -26,6 +26,7 @@ import CoordinatorRequestManagement from "./features/project-coordinator/pages/R
 import CoordinatorRequestAccess from "./features/project-coordinator/pages/RequestAccess";
 import CoordinatorRubricsManagement from "./features/project-coordinator/pages/RubricsManagement";
 import CoordinatorModificationsManagement from "./features/project-coordinator/pages/ModificationsManagement";
+import CoordinatorReports from "./features/project-coordinator/pages/CoordinatorReports";
 
 import Login from "./features/auth/pages/Login";
 import ForgotPassword from "./features/auth/pages/ForgotPassword";
@@ -298,6 +299,89 @@ function AppRoutes() {
             </CoordinatorProvider>
           }
         />
+      {/* Project Coordinator Routes - separate from admin */}
+      <Route
+        path="/coordinator/*"
+        element={
+          <CoordinatorProvider>
+            <Routes>
+              <Route path="" element={<Navigate to="students" replace />} />
+              <Route
+                path="students"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorStudentManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="faculty"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorFacultyManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="projects"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorProjectManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="panels"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorPanelManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="requests"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorRequestManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="request-access"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorRequestAccess />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="rubrics"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorRubricsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="modifications"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorModificationsManagement />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="reports"
+                element={
+                  <ProtectedRoute allowedRoles={["project_coordinator"]}>
+                    <CoordinatorReports />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+          </CoordinatorProvider>
+        }
+      />
 
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>

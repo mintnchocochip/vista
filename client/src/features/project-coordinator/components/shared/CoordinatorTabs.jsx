@@ -343,6 +343,13 @@ const CoordinatorTabs = () => {
       icon: UserGroupIcon,
       blocked: false,
     },
+    {
+      id: "reports",
+      label: "Reports",
+      path: "/coordinator/reports",
+      icon: DocumentTextIcon,
+      blocked: false,
+    },
   ];
 
   const handleTabClick = (tab) => {
