@@ -44,3 +44,8 @@ export const getAcademicYears = async () => {
   const response = await api.get("/faculty/academic-years");
   return response.data;
 };
+
+export const submitMarks = async (payload) => {
+  const response = await api.post("/faculty/marks", payload);
+  return response.data;
+};

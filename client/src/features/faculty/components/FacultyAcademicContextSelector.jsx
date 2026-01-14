@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Select from "../../../shared/components/Select";
 import Card from "../../../shared/components/Card";
-import { AcademicCapIcon, CheckCircleIcon } from "@heroicons/react/24/outline";
+import { AcademicCapIcon, CheckCircleIcon, LockClosedIcon } from "@heroicons/react/24/outline";
 import { getEvaluationMetadata, getAcademicYears } from "../services/facultyApi";
 
-const FacultyAcademicContextSelector = ({ currentFilters, onFilterChange, className = "" }) => {
+const FacultyAcademicContextSelector = ({ currentFilters, onFilterChange, className = "", lockedSchool = null }) => {
     const [loading, setLoading] = useState(false);
     const [masterData, setMasterData] = useState({
         schools: [],
@@ -57,11 +57,22 @@ const FacultyAcademicContextSelector = ({ currentFilters, onFilterChange, classN
         fetchMetadata();
     }, []);
 
+    // Enforce Locked School
+    useEffect(() => {
+        if (lockedSchool && currentFilters.school !== lockedSchool) {
+            // Force update if not already set, but be careful not to trigger infinite loops
+            // Only update if it's different and we have assurance it's a valid school (optional check)
+            onFilterChange({ ...currentFilters, school: lockedSchool, program: "All Programs" });
+        }
+    }, [lockedSchool, currentFilters.school]);
+
     // Sync programs when school changes
     useEffect(() => {
-        if (currentFilters.school && masterData.programs) {
+        const activeSchool = lockedSchool || currentFilters.school;
+
+        if (activeSchool && masterData.programs) {
             const programs = masterData.programs
-                ?.filter(p => p.school === currentFilters.school)
+                ?.filter(p => p.school === activeSchool)
                 ?.map(p => ({
                     value: p.code,
                     label: p.name,
@@ -71,15 +82,15 @@ const FacultyAcademicContextSelector = ({ currentFilters, onFilterChange, classN
         } else {
             setOptions(prev => ({ ...prev, programs: [] }));
         }
-    }, [currentFilters.school, masterData.programs]);
+    }, [currentFilters.school, lockedSchool, masterData.programs]);
 
     const steps = [
-        { key: "school", label: "School", options: options.schools, enabled: true },
-        { key: "program", label: "Program", options: options.programs, enabled: !!currentFilters.school },
-        { key: "year", label: "Academic Year", options: options.years, enabled: !!currentFilters.school && !!currentFilters.program },
+        { key: "school", label: "School", options: options.schools, enabled: !lockedSchool, locked: !!lockedSchool },
+        { key: "program", label: "Program", options: options.programs, enabled: !!(lockedSchool || currentFilters.school) },
+        { key: "year", label: "Academic Year", options: options.years, enabled: !!(lockedSchool || currentFilters.school) && !!currentFilters.program },
     ];
 
-    const completedSteps = steps.filter(step => currentFilters[step.key] && currentFilters[step.key] !== "All Programs").length;
+    const completedSteps = steps.filter(step => step.locked || (currentFilters[step.key] && currentFilters[step.key] !== "All Programs")).length;
     const isComplete = completedSteps === 3;
 
     const handleChange = (key, value) => {
@@ -125,16 +136,26 @@ const FacultyAcademicContextSelector = ({ currentFilters, onFilterChange, classN
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {steps.map((step) => (
-                    <div key={step.key} className={`space-y-1.5 ${!step.enabled ? "opacity-50" : ""}`}>
-                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">
-                            {step.label}
-                        </label>
+                    <div key={step.key} className={`space-y-1.5 ${!step.enabled && !step.locked ? "opacity-50" : ""}`}>
+                        <div className="flex items-center justify-between">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-wider ml-1">
+                                {step.label}
+                            </label>
+                            {step.locked && <LockClosedIcon className="w-3 h-3 text-slate-400" />}
+                        </div>
                         <div className="relative">
                             <select
-                                value={currentFilters[step.key]}
+                                value={step.locked ? lockedSchool : currentFilters[step.key]}
                                 onChange={(e) => handleChange(step.key, e.target.value)}
-                                disabled={!step.enabled}
-                                className={`w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-3 text-sm font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all appearance-none cursor-pointer ${!step.enabled ? "cursor-not-allowed" : ""}`}
+                                disabled={!step.enabled || step.locked}
+                                className={`
+                                    w-full border rounded-xl py-2 px-3 text-sm font-bold outline-none transition-all appearance-none
+                                    ${step.locked
+                                        ? "bg-slate-100 border-slate-200 text-slate-500 cursor-not-allowed"
+                                        : "bg-slate-50 border-slate-200 text-slate-700 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer"
+                                    }
+                                    ${(!step.enabled && !step.locked) ? "cursor-not-allowed" : ""}
+                                `}
                             >
                                 <option value="">Select {step.label}</option>
                                 {step.options.map((opt) => (
@@ -144,9 +165,13 @@ const FacultyAcademicContextSelector = ({ currentFilters, onFilterChange, classN
                                 ))}
                             </select>
                             <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400">
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-                                </svg>
+                                {step.locked ? (
+                                    <LockClosedIcon className="w-4 h-4" />
+                                ) : (
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+                                    </svg>
+                                )}
                             </div>
                         </div>
                     </div>

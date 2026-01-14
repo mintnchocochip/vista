@@ -7,9 +7,9 @@ import PastReviewsSection from '../components/PastReviewsSection';
 import MarkEntryModal from '../components/MarkEntryModal';
 import FacultyAcademicContextSelector from '../components/FacultyAcademicContextSelector';
 import Button from '../../../shared/components/Button';
-import { FunnelIcon, CalendarIcon, AcademicCapIcon, ArrowRightIcon, UserGroupIcon } from '@heroicons/react/24/outline';
-import { MOCK_MASTER_DATA } from '../../../shared/utils/mockData';
+import { CalendarIcon, AcademicCapIcon, UserGroupIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../../../shared/hooks/useAuth';
+
 
 const FacultyDashboard = () => {
     const { user: authUser } = useAuth();
@@ -97,9 +97,6 @@ const FacultyDashboard = () => {
         }
     }, [filters.school, filterOptions.allPrograms]);
 
-    // Workflow State
-    const [isInitialized, setIsInitialized] = useState(false);
-
     // Marking Workflow State
     const [isMarkingOpen, setIsMarkingOpen] = useState(false);
     const [currentReview, setCurrentReview] = useState(null);
@@ -117,91 +114,8 @@ const FacultyDashboard = () => {
         setIsMarkingOpen(false);
     };
 
-    // --- SETUP VIEW ---
-    if (!isInitialized) {
-        return (
-            <div className="flex flex-col h-screen bg-slate-50 font-sans">
-                {/* Show Navbar, but empty center */}
-                <div className="shrink-0 z-30">
-                    <Navbar />
-                </div>
-
-                <div className="flex-1 flex flex-col items-center justify-center p-6 -mt-16">
-                    <div className="max-w-md w-full bg-white rounded-2xl shadow-xl border border-slate-100 p-8 text-center animate-slideUp">
-                        <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-6 text-blue-600">
-                            <FunnelIcon className="w-8 h-8" />
-                        </div>
-                        <h1 className="text-2xl font-bold text-slate-900 mb-2">Welcome, Professor</h1>
-                        <p className="text-slate-500 mb-8">Please select your dashboard parameters to begin.</p>
-
-                        <div className="space-y-4 text-left">
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Academic Year</label>
-                                <select
-                                    value={filters.year}
-                                    onChange={e => setFilters(f => ({ ...f, year: e.target.value }))}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700"
-                                >
-                                    {filterOptions.years.map(year => (
-                                        <option key={year} value={year}>{year}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">School</label>
-                                <select
-                                    value={filters.school}
-                                    onChange={e => setFilters(f => ({ ...f, school: e.target.value }))}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700"
-                                >
-                                    {filterOptions.schools.map(school => (
-                                        <option key={school} value={school}>{school}</option>
-                                    ))}
-                                </select>
-                            </div>
-
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Program</label>
-                                <select
-                                    value={filters.program}
-                                    onChange={e => setFilters(f => ({ ...f, program: e.target.value }))}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700"
-                                >
-                                    <option>All Programs</option>
-                                    {filterOptions.programs.map(program => (
-                                        <option key={program.code} value={program.code}>{program.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-bold text-slate-700 mb-1">Role</label>
-                                <select
-                                    value={filters.role}
-                                    onChange={e => setFilters(f => ({ ...f, role: e.target.value }))}
-                                    className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all font-medium text-slate-700 uppercase"
-                                >
-                                    <option value="guide">GUIDE</option>
-                                    <option value="panel">PANEL</option>
-                                </select>
-                            </div>
-                        </div>
-
-                        <button
-                            onClick={() => setIsInitialized(true)}
-                            className="w-full mt-8 py-4 bg-gradient-to-r from-blue-600 to-indigo-600 text-white font-bold rounded-xl shadow-lg hover:shadow-blue-200 hover:-translate-y-1 transition-all flex items-center justify-center gap-2"
-                        >
-                            Load Dashboard <ArrowRightIcon className="w-5 h-5" />
-                        </button>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    // --- DASHBOARD VIEW (Normal) ---
-
-    if (loading) return <div className="flex h-screen items-center justify-center p-8 text-slate-500">Loading Dashboard...</div>;
+    // --- DASHBOARD VIEW ---
+    if (loading || loadingFilters) return <div className="flex h-screen items-center justify-center p-8 text-slate-500">Loading Dashboard...</div>;
     if (error) return <div className="p-8 text-red-500">Error: {error}</div>;
 
     return (
@@ -221,6 +135,7 @@ const FacultyDashboard = () => {
                             className="flex-1"
                             currentFilters={filters}
                             onFilterChange={(newFilters) => setFilters(newFilters)}
+                            lockedSchool={authUser?.school || 'SCOPE'} // Lock to user school
                         />
 
                         {/* Role Selector Card */}
