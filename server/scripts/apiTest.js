@@ -1,10 +1,10 @@
 // Try to use global fetch (Node 18+)
 const fetch = global.fetch || (async (...args) => {
-    const {default: fetch} = await import('node-fetch');
+    const { default: fetch } = await import('node-fetch');
     return fetch(...args);
 });
 
-const BASE_URL = 'http://localhost:3000/api';
+const BASE_URL = 'http://localhost:5000/api';
 
 const colors = {
     reset: "\x1b[0m",
@@ -94,7 +94,7 @@ async function runTests() {
         console.log(`${colors.red}Admin login failed.${colors.reset}`);
         return;
     }
-    
+
     state.tokens.admin = loginRes.data.token || (loginRes.data.data && loginRes.data.data.token);
     logResult('Admin Login', loginRes.status, loginRes.data);
 
@@ -104,14 +104,14 @@ async function runTests() {
     // 1. Get Master Data
     let masterRes = await request('GET', '/admin/master-data', null, state.tokens.admin);
     let masterData = masterRes.data.data;
-    
+
     console.log("Existing Schools:", masterData.schools.map(s => `${s.name} (${s.code})`).join(", "));
     console.log("Existing Departments:", masterData.departments.map(d => `${d.name} (${d.code}) in ${d.school}`).join(", "));
 
     // 2. Create School if not exists
     // Check by Code OR Name
     let school = masterData.schools.find(s => s.code === state.data.schoolCode || s.name === state.data.schoolCode);
-    
+
     if (!school) {
         const schoolData = { name: state.data.schoolCode, code: state.data.schoolCode };
         let res = await request('POST', '/admin/master-data/schools', schoolData, state.tokens.admin);
@@ -131,7 +131,7 @@ async function runTests() {
     let dept = masterData.departments.find(d => (d.code === state.data.deptCode || d.name === state.data.deptName) && d.school === state.data.schoolCode);
     if (!dept) {
         const deptData = {
-            school: state.data.schoolCode, 
+            school: state.data.schoolCode,
             name: state.data.deptName,
             code: state.data.deptCode,
             specializations: ["Artificial Intelligence", "Machine Learning", "Data Science"]
@@ -158,7 +158,7 @@ async function runTests() {
     console.log(`\n${colors.yellow}--- Admin: Department Config Tests ---${colors.reset}`);
     const configQuery = `academicYear=${encodeURIComponent(state.data.academicYear)}&school=${encodeURIComponent(state.data.schoolCode)}&department=${encodeURIComponent(state.data.deptName)}`;
     let configRes = await request('GET', `/admin/department-config?${configQuery}`, null, state.tokens.admin);
-    
+
     if (configRes.status !== 200) {
         const deptConfigData = {
             academicYear: state.data.academicYear,
@@ -179,7 +179,7 @@ async function runTests() {
     // --- Admin: Component Library ---
     console.log(`\n${colors.yellow}--- Admin: Component Library Tests ---${colors.reset}`);
     let compRes = await request('GET', `/admin/component-library?${configQuery}`, null, state.tokens.admin);
-    
+
     if (compRes.status === 200 && compRes.data.data && compRes.data.data.components.length > 0) {
         state.ids.component = compRes.data.data.components[0]._id || compRes.data.data.components[0].componentId;
         console.log(`${colors.green}✓ Component Library exists${colors.reset}`);
@@ -225,11 +225,11 @@ async function runTests() {
                     displayName: "Review 1",
                     facultyType: "both",
                     components: [
-                        { 
+                        {
                             componentId: state.ids.component,
-                            name: "Problem Definition", 
-                            maxMarks: 10, 
-                            description: "Clarity" 
+                            name: "Problem Definition",
+                            maxMarks: 10,
+                            description: "Clarity"
                         }
                     ],
                     deadline: { from: "2024-09-01T00:00:00Z", to: "2024-09-30T23:59:59Z" },
@@ -255,13 +255,13 @@ async function runTests() {
 
     // --- Admin: Faculty ---
     console.log(`\n${colors.yellow}--- Admin: Faculty Tests ---${colors.reset}`);
-    
+
     const timestamp = Date.now();
     const randomPhone = 9000000000 + Math.floor(Math.random() * 1000000000);
     // Faculty 1 (Guide)
     const facultyData = {
         name: "Dr. Rajesh Kumar",
-        emailId: `rajesh.kumar.${timestamp}@vit.ac.in`, 
+        emailId: `rajesh.kumar.${timestamp}@vit.ac.in`,
         employeeId: `EMP${timestamp}`,
         password: "Password123!",
         role: "faculty",
@@ -270,7 +270,7 @@ async function runTests() {
         specialization: "Data Science",
         phoneNumber: `+91 ${randomPhone}`
     };
-    
+
     let facRes = await request('POST', '/admin/faculty', facultyData, state.tokens.admin);
     logResult('Create Faculty 1', facRes.status, facRes.data, 201);
     if (facRes.status === 201) state.ids.faculty = facRes.data.data._id;
@@ -278,16 +278,16 @@ async function runTests() {
     // Faculty 2 (Panel Member)
     const faculty2Data = {
         name: "Dr. Priya Singh",
-        emailId: `priya.singh.${timestamp}@vit.ac.in`, 
-        employeeId: `EMP${timestamp+1}`,
+        emailId: `priya.singh.${timestamp}@vit.ac.in`,
+        employeeId: `EMP${timestamp + 1}`,
         password: "Password123!",
         role: "faculty",
         school: state.data.schoolCode,
         department: state.data.deptName,
         specialization: "Data Science",
-        phoneNumber: `+91 ${randomPhone+1}`
+        phoneNumber: `+91 ${randomPhone + 1}`
     };
-    
+
     let fac2Res = await request('POST', '/admin/faculty', faculty2Data, state.tokens.admin);
     logResult('Create Faculty 2', fac2Res.status, fac2Res.data, 201);
     if (fac2Res.status === 201) state.ids.faculty2 = fac2Res.data.data._id;
@@ -308,7 +308,7 @@ async function runTests() {
         regNo: `21BCE${timestamp}`,
         name: "Rajesh Student",
         emailId: `rajesh.student.${timestamp}@vitstudent.ac.in`,
-        phoneNumber: `+91 ${randomPhone+2}`,
+        phoneNumber: `+91 ${randomPhone + 2}`,
         school: state.data.schoolCode,
         department: state.data.deptName,
         academicYear: state.data.academicYear,
@@ -320,7 +320,7 @@ async function runTests() {
 
     // --- Admin: Project Coordinator ---
     console.log(`\n${colors.yellow}--- Admin: Project Coordinator Tests ---${colors.reset}`);
-    
+
     if (state.ids.faculty) {
         const coordinatorData = {
             facultyId: state.ids.faculty,
@@ -413,7 +413,7 @@ async function runTests() {
             maxTotalMarks: 10,
             remarks: "Good start"
         };
-        
+
         let marksRes = await request('POST', '/faculty/marks', marksData, state.tokens.faculty);
         logResult('Submit Marks', marksRes.status, marksRes.data, 201);
     } else {
